@@ -1,4 +1,4 @@
-import { withThirdPlace } from './bracket';
+import { migrateBracket } from './bracket';
 import { partsFromMs, parseTime } from './time';
 import type { AppState, Entrant } from './types';
 
@@ -15,8 +15,10 @@ const KEY = 'auto-bracket-maker:v1';
 export const initialState: AppState = {
   event: { title: '', subtitle: '' },
   entrants: [],
+  format: 'race',
   bracket: null,
   view: 'setup',
+  pane: 'winners',
   theme: 'dark',
   firstRound: 0,
 };
@@ -29,7 +31,7 @@ export function loadState(): AppState {
       return {
         ...state,
         entrants: state.entrants.map(migrateEntrant),
-        bracket: state.bracket && withThirdPlace(state.bracket),
+        bracket: state.bracket && migrateBracket(state.bracket),
       };
     }
   } catch {

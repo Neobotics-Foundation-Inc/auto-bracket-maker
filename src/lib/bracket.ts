@@ -1,4 +1,13 @@
-import { BYE, THIRD_PLACE_ROUND, type Bracket, type Match, type SeededTeam, type SlotValue } from './types';
+import {
+  BYE,
+  type Bracket,
+  type Match,
+  type SeededTeam,
+  type Section,
+  type SlotValue,
+  type Source,
+  type ThirdPlaceFormat,
+} from './types';
 
 export function nextPow2(n: number): number {
   let size = 1;
@@ -21,11 +30,10 @@ export function seedOrder(size: number): number[] {
 
 export const isTeam = (slot: SlotValue): slot is string => slot !== null && slot !== BYE;
 export const isPlayable = (m: Match) => isTeam(m.a) && isTeam(m.b);
-export const isByeMatch = (m: Match) =>
-  (m.round === 0 || m.round === THIRD_PLACE_ROUND) && (m.a === BYE || m.b === BYE);
+/** A match against a bye is decided automatically and isn't a race. */
+export const isByeMatch = (m: Match) => m.a === BYE || m.b === BYE;
 
 export function roundName(size: number, round: number): string {
-  if (round === THIRD_PLACE_ROUND) return 'Third place';
   const teams = size >> round;
   if (teams === 2) return 'Final';
   if (teams === 4) return 'Semifinals';
@@ -33,43 +41,110 @@ export function roundName(size: number, round: number): string {
   return `Round of ${teams}`;
 }
 
-const isSemifinal = (bracket: Bracket, round: number) => round === bracket.rounds.length - 2;
-const matchAt = (bracket: Bracket, round: number, index: number): Match | undefined =>
-  round === THIRD_PLACE_ROUND ? (bracket.thirdPlace ?? undefined) : bracket.rounds[round]?.[index];
-const loserOf = (m: Match): SlotValue => (!m.winner ? null : m.winner === m.a ? m.b : m.a);
-
-/** Puts the semifinal loser into the third-place race, which restarts with the new line-up. */
-function placeLoser(bracket: Bracket, round: number, index: number) {
-  const third = bracket.thirdPlace;
-  if (!third || !isSemifinal(bracket, round)) return;
-  third[index === 0 ? 'a' : 'b'] = loserOf(bracket.rounds[round][index]);
-  // A semifinal bye (3 teams) leaves one loser, who takes third place unraced.
-  third.winner = third.a === BYE && isTeam(third.b) ? third.b : third.b === BYE && isTeam(third.a) ? third.a : null;
+/** Column heading for a round in any section. */
+export function sectionRoundName(bracket: Bracket, section: Section, round: number): string {
+  if (section === 'third') return 'Third place';
+  if (section === 'grand') return 'Grand final';
+  if (section === 'losers') return round === bracket.losers.length - 1 ? 'Losers final' : `Losers round ${round + 1}`;
+  if (bracket.format === 'double' && round === bracket.rounds.length - 1) return 'Winners final';
+  return roundName(bracket.size, round);
 }
 
-/** Puts the winner of match (round, index) into its slot in the next round. */
-function place(bracket: Bracket, round: number, index: number, teamId: string) {
-  const parent = bracket.rounds[round + 1]?.[index >> 1];
-  if (parent) parent[index % 2 === 0 ? 'a' : 'b'] = teamId;
-  placeLoser(bracket, round, index);
+const SINGULAR: Record<string, string> = { Semifinals: 'Semifinal', Quarterfinals: 'Quarterfinal' };
+
+/** Short name for one match, e.g. "Quarterfinal 2" or "Losers round 3 · 1". */
+export function matchLabel(bracket: Bracket, match: Match): string {
+  const name = sectionRoundName(bracket, match.section, match.round);
+  const count =
+    match.section === 'main'
+      ? bracket.rounds[match.round].length
+      : match.section === 'losers'
+        ? bracket.losers[match.round].length
+        : 1;
+  if (count === 1) return name;
+  return SINGULAR[name] ? `${SINGULAR[name]} ${match.index + 1}` : `${name} · ${match.index + 1}`;
 }
 
-/** Removes the winner of match (round, index) from later rounds, clearing any results that depended on them. */
-function vacate(bracket: Bracket, round: number, index: number) {
-  placeLoser(bracket, round, index);
-  const parent = bracket.rounds[round + 1]?.[index >> 1];
-  if (!parent) return;
-  parent[index % 2 === 0 ? 'a' : 'b'] = null;
-  if (parent.winner) {
-    parent.winner = null;
-    vacate(bracket, round + 1, index >> 1);
+/** Every match, each one after the matches it draws its teams from. */
+export function allMatches(bracket: Bracket): Match[] {
+  const extra = [bracket.thirdPlace, ...bracket.losers.flat(), bracket.grandFinal].filter((m): m is Match => !!m);
+  return [...bracket.rounds.flat(), ...extra];
+}
+
+export const findMatch = (bracket: Bracket, id: string) => allMatches(bracket).find((m) => m.id === id);
+
+export function loserOf(m: Match): SlotValue {
+  if (!m.winner) return null;
+  if (m.winner === BYE) return BYE;
+  return m.winner === m.a ? m.b : m.a;
+}
+
+function decide(m: Match): SlotValue {
+  if (m.a === BYE && m.b === BYE) return BYE;
+  if (m.a === BYE) return isTeam(m.b) ? m.b : null;
+  if (m.b === BYE) return isTeam(m.a) ? m.a : null;
+  return m.picked?.winner ?? null;
+}
+
+/**
+ * Fills every slot from its source and settles each match. A result the user picked is
+ * dropped as soon as either team in that match changes, so correcting an early race
+ * clears every later result that depended on it.
+ */
+function resolve(bracket: Bracket) {
+  const byId = new Map<string, Match>();
+  for (const m of allMatches(bracket)) {
+    m.sources.forEach((source, side) => {
+      if (!source) return;
+      const from = byId.get(source.match)!;
+      m[side === 0 ? 'a' : 'b'] = source.take === 'winner' ? from.winner : loserOf(from);
+    });
+    if (m.picked && (m.picked.a !== m.a || m.picked.b !== m.b)) m.picked = null;
+    m.winner = decide(m);
+    byId.set(m.id, m);
   }
 }
 
-const emptyThirdPlace = (): Match => ({ id: 'third', round: THIRD_PLACE_ROUND, index: 0, a: null, b: null, winner: null });
+const newMatch = (
+  id: string,
+  section: Section,
+  round: number,
+  index: number,
+  sources: Match['sources'] = [null, null],
+): Match => ({ id, section, round, index, a: null, b: null, sources, winner: null, picked: null });
 
-/** Builds a single-elimination bracket from seeded teams, giving byes to the top seeds. */
-export function buildBracket(teams: SeededTeam[]): Bracket {
+const winnerOf = (match: string): Source => ({ match, take: 'winner' });
+const loserFrom = (match: string): Source => ({ match, take: 'loser' });
+
+/**
+ * Losers bracket for double elimination. With k winners rounds it has 2(k−1) rounds:
+ * the first pairs off first-round losers, then rounds alternate between taking in the
+ * losers dropping from the next winners round and halving the field. Dropping losers
+ * are fed in reverse order so teams don't meet again straight away.
+ */
+function buildLosers(rounds: Match[][]): Match[][] {
+  const losers: Match[][] = [];
+  const add = (count: number, sources: (i: number) => Match['sources']) => {
+    const round = losers.length;
+    losers.push(Array.from({ length: count }, (_, i) => newMatch(`l${round}m${i}`, 'losers', round, i, sources(i))));
+    return losers[round];
+  };
+
+  let prev = add(rounds[0].length / 2, (i) => [loserFrom(rounds[0][2 * i].id), loserFrom(rounds[0][2 * i + 1].id)]);
+  for (let j = 1; j < rounds.length; j++) {
+    const dropping = rounds[j];
+    const feeders = prev;
+    prev = add(dropping.length, (i) => [winnerOf(feeders[i].id), loserFrom(dropping[dropping.length - 1 - i].id)]);
+    if (j < rounds.length - 1) {
+      const pairs = prev;
+      prev = add(pairs.length / 2, (i) => [winnerOf(pairs[2 * i].id), winnerOf(pairs[2 * i + 1].id)]);
+    }
+  }
+  return losers;
+}
+
+/** Builds a bracket from seeded teams, giving byes to the top seeds. */
+export function buildBracket(teams: SeededTeam[], format: ThirdPlaceFormat = 'race'): Bracket {
   const size = nextPow2(Math.max(teams.length, 2));
   const idBySeed = new Map(teams.map((t) => [t.seed, t.id]));
   const order = seedOrder(size);
@@ -78,101 +153,105 @@ export function buildBracket(teams: SeededTeam[]): Bracket {
   for (let round = 0; size >> (round + 1) >= 1; round++) {
     const count = size >> (round + 1);
     rounds.push(
-      Array.from({ length: count }, (_, index) => ({
-        id: `r${round}m${index}`,
-        round,
-        index,
-        a: null,
-        b: null,
-        winner: null,
-      })),
+      Array.from({ length: count }, (_, i) =>
+        newMatch(
+          `r${round}m${i}`,
+          'main',
+          round,
+          i,
+          round === 0 ? [null, null] : [winnerOf(`r${round - 1}m${2 * i}`), winnerOf(`r${round - 1}m${2 * i + 1}`)],
+        ),
+      ),
     );
   }
-
-  const bracket: Bracket = {
-    size,
-    teams: Object.fromEntries(teams.map((t) => [t.id, t])),
-    rounds,
-    thirdPlace: rounds.length >= 2 ? emptyThirdPlace() : null,
-  };
   for (const match of rounds[0]) {
     match.a = idBySeed.get(order[2 * match.index]) ?? BYE;
     match.b = idBySeed.get(order[2 * match.index + 1]) ?? BYE;
-    const advancing = match.a === BYE ? match.b : match.b === BYE ? match.a : null;
-    if (isTeam(advancing)) {
-      match.winner = advancing;
-      place(bracket, 0, match.index, advancing);
-    }
   }
+
+  // Deciding third place needs semifinals, so at least 3 teams.
+  const hasSemis = rounds.length >= 2;
+  const semis = rounds[rounds.length - 2];
+  const final = rounds[rounds.length - 1][0];
+  const losers = format === 'double' && hasSemis ? buildLosers(rounds) : [];
+  const bracket: Bracket = {
+    size,
+    format,
+    teams: Object.fromEntries(teams.map((t) => [t.id, t])),
+    rounds,
+    losers,
+    thirdPlace:
+      format === 'race' && hasSemis ? newMatch('third', 'third', 0, 0, [loserFrom(semis[0].id), loserFrom(semis[1].id)]) : null,
+    grandFinal: losers.length
+      ? newMatch('grand', 'grand', 0, 0, [winnerOf(final.id), winnerOf(losers[losers.length - 1][0].id)])
+      : null,
+  };
+  resolve(bracket);
   return bracket;
 }
 
-/** Adds the third-place race to a bracket saved before it existed. */
-export function withThirdPlace(bracket: Bracket): Bracket {
-  if (bracket.thirdPlace !== undefined) return bracket;
-  const next: Bracket = { ...bracket, thirdPlace: bracket.rounds.length >= 2 ? emptyThirdPlace() : null };
-  if (next.thirdPlace) {
-    const semis = next.rounds.length - 2;
-    next.rounds[semis].forEach((_, index) => placeLoser(next, semis, index));
-  }
-  return next;
-}
-
 /**
- * Records teamId as the winner of a match and moves them on. Picking a different
- * team corrects the result; picking the current winner again clears it. Either way,
- * later results that involved the old winner are cleared.
+ * Records teamId as the winner of a match. Picking a different team corrects the
+ * result; picking the current winner again clears it. Either way, later results that
+ * involved the old winner or loser are cleared.
  */
-export function advanceWinner(bracket: Bracket, round: number, index: number, teamId: string): Bracket {
-  const current = matchAt(bracket, round, index);
+export function advanceWinner(bracket: Bracket, matchId: string, teamId: string): Bracket {
+  const current = findMatch(bracket, matchId);
   if (!current || !isPlayable(current) || (teamId !== current.a && teamId !== current.b)) return bracket;
 
   const next = structuredClone(bracket);
-  const match = matchAt(next, round, index)!;
-  const previous = match.winner;
-  // The third-place race feeds nothing, so only its own result changes.
-  const feeds = round !== THIRD_PLACE_ROUND;
-  if (previous) {
-    match.winner = null;
-    if (feeds) vacate(next, round, index);
-  }
-  if (previous !== teamId) {
-    match.winner = teamId;
-    if (feeds) place(next, round, index, teamId);
-  }
+  const match = findMatch(next, matchId)!;
+  match.picked = match.picked?.winner === teamId ? null : { winner: teamId, a: current.a!, b: current.b! };
+  resolve(next);
   return next;
-}
-
-export function champion(bracket: Bracket): string | null {
-  return bracket.rounds[bracket.rounds.length - 1][0].winner;
 }
 
 export interface Podium {
   first: string | null;
   second: string | null;
-  /** Null until the third-place race is decided, and always null with only 2 teams. */
+  /** Null until it's decided, and always null with only 2 teams. */
   third: string | null;
 }
 
 export function podium(bracket: Bracket): Podium {
-  const final = bracket.rounds[bracket.rounds.length - 1][0];
-  const second = loserOf(final);
-  return {
-    first: final.winner,
-    second: isTeam(second) ? second : null,
-    third: bracket.thirdPlace?.winner ?? null,
-  };
+  const team = (slot: SlotValue) => (isTeam(slot) ? slot : null);
+  const final = bracket.grandFinal ?? bracket.rounds[bracket.rounds.length - 1][0];
+  let third: string | null = null;
+  if (bracket.format === 'race') {
+    third = team(bracket.thirdPlace?.winner ?? null);
+  } else if (bracket.format === 'double') {
+    const losersFinal = bracket.losers[bracket.losers.length - 1]?.[0];
+    third = losersFinal ? team(loserOf(losersFinal)) : null;
+  } else if (bracket.rounds.length >= 2) {
+    // Time-trial tiebreak: once both semifinals are decided, the better seed of their losers.
+    const semiLosers = bracket.rounds[bracket.rounds.length - 2].map(loserOf);
+    if (semiLosers.every((slot) => slot !== null)) {
+      const ranked = semiLosers.filter(isTeam).sort((x, y) => bracket.teams[x].seed - bracket.teams[y].seed);
+      third = ranked[0] ?? null;
+    }
+  }
+  return { first: team(final.winner), second: team(loserOf(final)), third };
 }
 
 /** Counts real races (not byes) and how many have a result. */
 export function progress(bracket: Bracket): { decided: number; total: number } {
-  let decided = 0;
-  let total = 0;
-  const all = bracket.thirdPlace ? [...bracket.rounds.flat(), bracket.thirdPlace] : bracket.rounds.flat();
-  for (const match of all) {
-    if (isByeMatch(match)) continue;
-    total++;
-    if (match.winner) decided++;
+  const races = allMatches(bracket).filter((m) => !isByeMatch(m));
+  return { decided: races.filter((m) => m.winner).length, total: races.length };
+}
+
+/**
+ * Brackets saved before formats existed have no sources or picks: rebuild them as a
+ * third-place-race bracket and replay their results.
+ */
+export function migrateBracket(saved: Bracket): Bracket {
+  if (saved.format) return saved;
+  const old = saved as unknown as { teams: Bracket['teams']; rounds: Match[][]; thirdPlace?: Match | null };
+  let bracket = buildBracket(
+    Object.values(old.teams).sort((x, y) => x.seed - y.seed),
+    'race',
+  );
+  for (const m of [...old.rounds.flat(), ...(old.thirdPlace ? [old.thirdPlace] : [])]) {
+    if (isTeam(m.winner) && isTeam(m.a) && isTeam(m.b)) bracket = advanceWinner(bracket, m.id, m.winner);
   }
-  return { decided, total };
+  return bracket;
 }

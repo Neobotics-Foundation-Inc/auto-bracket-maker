@@ -4,7 +4,7 @@ import { ConfirmDialog, type ConfirmRequest } from './components/ConfirmDialog';
 import { PodiumView } from './components/PodiumView';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
-import { advanceWinner, buildBracket, isByeMatch, progress, roundName } from './lib/bracket';
+import { advanceWinner, buildBracket, progress, roundName } from './lib/bracket';
 import { seedTeams } from './lib/entrants';
 import { initialState, loadState, saveState } from './lib/storage';
 import type { AppState, SeededTeam, View } from './lib/types';
@@ -22,7 +22,7 @@ export default function App() {
   const [present, setPresent] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const closeConfirm = useCallback(() => setConfirmRequest(null), []);
-  const { event, entrants, bracket, view, theme, firstRound } = state;
+  const { event, entrants, format, bracket, view, theme, firstRound } = state;
   const patch = useCallback((p: Partial<AppState>) => setState((s) => ({ ...s, ...p })), []);
 
   useEffect(() => saveState(state), [state]);
@@ -38,9 +38,11 @@ export default function App() {
     () => (bracket ? Object.values(bracket.teams).sort((a, b) => a.seed - b.seed) : null),
     [bracket],
   );
-  const stale = !!bracketTeams && signature(bracketTeams) !== signature(seeded);
+  const stale = !!bracket && (signature(bracketTeams!) !== signature(seeded) || bracket.format !== format);
   const standings = bracketTeams ?? seeded;
   const roundCount = bracket?.rounds.length ?? 0;
+  const hasLosers = !!bracket?.losers.length;
+  const pane = hasLosers ? state.pane : 'winners';
 
   const setView = (next: View) => patch({ view: next });
   const shiftRound = useCallback(
@@ -53,12 +55,12 @@ export default function App() {
   );
 
   function generate() {
-    const build = () => patch({ bracket: buildBracket(seeded), view: 'bracket', firstRound: 0 });
-    const races = bracket ? [...bracket.rounds.flat(), ...(bracket.thirdPlace ? [bracket.thirdPlace] : [])] : [];
-    if (!races.some((m) => m.winner && !isByeMatch(m))) return build();
+    const build = () =>
+      patch({ bracket: buildBracket(seeded, format), view: 'bracket', pane: 'winners', firstRound: 0 });
+    if (!bracket || progress(bracket).decided === 0) return build();
     setConfirmRequest({
       title: 'Regenerate the bracket?',
-      message: 'This builds a new bracket from the current teams and times, and clears every race result.',
+      message: 'This builds a new bracket from the current teams, times and format, and clears every race result.',
       confirmLabel: 'Regenerate',
       onConfirm: build,
     });
@@ -101,9 +103,9 @@ export default function App() {
       if (canPresent || present) togglePresent();
     } else if (e.key === 'Escape' && present) {
       exitPresent();
-    } else if (view === 'bracket' && e.key === 'ArrowRight') {
+    } else if (view === 'bracket' && pane === 'winners' && e.key === 'ArrowRight') {
       shiftRound(1);
-    } else if (view === 'bracket' && e.key === 'ArrowLeft') {
+    } else if (view === 'bracket' && pane === 'winners' && e.key === 'ArrowLeft') {
       shiftRound(-1);
     }
   };
@@ -114,6 +116,15 @@ export default function App() {
   }, []);
 
   const showEventHeader = view !== 'setup';
+  const paneSwitch = (
+    <div className="segmented" role="group" aria-label="Bracket">
+      {(['winners', 'losers'] as const).map((p) => (
+        <button key={p} className={pane === p ? 'active' : ''} aria-pressed={pane === p} onClick={() => patch({ pane: p })}>
+          {p === 'winners' ? 'Winners bracket' : 'Losers bracket'}
+        </button>
+      ))}
+    </div>
+  );
   const counts = bracket ? progress(bracket) : null;
 
   return (
@@ -185,6 +196,8 @@ export default function App() {
           bracketStale={stale}
           onEventChange={(e) => patch({ event: e })}
           onEntrantsChange={(list) => patch({ entrants: list })}
+          format={format}
+          onFormatChange={(f) => patch({ format: f })}
           onGenerate={generate}
           onViewBracket={() => setView('bracket')}
           onConfirm={setConfirmRequest}
@@ -197,6 +210,9 @@ export default function App() {
           {event.subtitle && <p>{event.subtitle}</p>}
           {view === 'standings' && <p className="event-header__tag">Time-trial standings</p>}
           {view === 'podium' && <p className="event-header__tag">Podium</p>}
+          {view === 'bracket' && hasLosers && (
+            <p className="event-header__tag">{pane === 'losers' ? 'Losers bracket' : 'Winners bracket'}</p>
+          )}
         </div>
       )}
 
@@ -210,22 +226,25 @@ export default function App() {
         <main className="page page--stage">
           {!present && (
             <div className="toolbar">
-              <label>
-                <span>Show from</span>
-                <select value={firstRound} onChange={(e) => patch({ firstRound: Number(e.target.value) })}>
-                  {bracket.rounds.map((_, r) => (
-                    <option key={r} value={r}>
-                      {roundName(bracket.size, r)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {hasLosers && paneSwitch}
+              {pane === 'winners' && (
+                <label>
+                  <span>Show from</span>
+                  <select value={firstRound} onChange={(e) => patch({ firstRound: Number(e.target.value) })}>
+                    {bracket.rounds.map((_, r) => (
+                      <option key={r} value={r}>
+                        {roundName(bracket.size, r)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               {counts && (
                 <span className="muted">
                   {counts.decided} of {counts.total} races decided · click a team to mark the winner
                 </span>
               )}
-              {stale && <span className="warn">Teams or times changed since this bracket was made.</span>}
+              {stale && <span className="warn">Teams, times or format changed since this bracket was made.</span>}
               <div className="actions">
                 <button className="btn" onClick={() => setView('setup')}>
                   Back to setup
@@ -238,9 +257,10 @@ export default function App() {
           )}
           <BracketView
             bracket={bracket}
+            pane={pane}
             firstRound={firstRound}
             present={present}
-            onPick={(round, index, teamId) => patch({ bracket: advanceWinner(bracket, round, index, teamId) })}
+            onPick={(matchId, teamId) => patch({ bracket: advanceWinner(bracket, matchId, teamId) })}
           />
         </main>
       )}
@@ -253,7 +273,8 @@ export default function App() {
 
       {present && (
         <div className="present-controls">
-          {view === 'bracket' && bracket && (
+          {view === 'bracket' && hasLosers && paneSwitch}
+          {view === 'bracket' && bracket && pane === 'winners' && (
             <>
               <button className="btn" onClick={() => shiftRound(-1)} disabled={firstRound === 0} title="Show earlier rounds (←)">
                 ◀

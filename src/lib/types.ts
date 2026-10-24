@@ -1,10 +1,7 @@
 /** Marker placed in a first-round slot that has no team. */
 export const BYE = '__bye__';
 
-/** Match.round of the third-place race, which sits outside Bracket.rounds. */
-export const THIRD_PLACE_ROUND = -1;
-
-/** A bracket slot holds a team id, BYE, or null while it waits for a winner. */
+/** A bracket slot holds a team id, BYE, or null while it waits for a result. */
 export type SlotValue = string | null;
 
 /** A time-trial result as typed into its minute, second and millisecond boxes (digits only). */
@@ -28,24 +25,52 @@ export interface SeededTeam {
   seed: number;
 }
 
+/**
+ * How third place is decided:
+ * race   – the semifinal losers race once more;
+ * double – double elimination: a losers bracket and a grand final;
+ * seed   – the semifinal loser with the faster time trial takes 3rd, with no extra race.
+ */
+export type ThirdPlaceFormat = 'race' | 'double' | 'seed';
+
+/** main is the (winners) bracket; losers only exists in double elimination. */
+export type Section = 'main' | 'losers' | 'third' | 'grand';
+
+/** Where a slot's team comes from: the winner or loser of an earlier match. */
+export interface Source {
+  match: string;
+  take: 'winner' | 'loser';
+}
+
 export interface Match {
   id: string;
-  /** Index into Bracket.rounds, or THIRD_PLACE_ROUND for the third-place race. */
+  section: Section;
+  /** Round within its section. */
   round: number;
   index: number;
+  /** Filled in from `sources` (or the seeding, in the first round) by resolving the bracket. */
   a: SlotValue;
   b: SlotValue;
-  winner: string | null;
+  sources: [Source | null, Source | null];
+  /** A team, BYE when two byes meet, or null while undecided. */
+  winner: SlotValue;
+  /** The result the user clicked, kept only while the same two teams are in the match. */
+  picked: { winner: string; a: string; b: string } | null;
 }
 
 export interface Bracket {
   /** Number of first-round slots, always a power of 2. */
   size: number;
+  format: ThirdPlaceFormat;
   teams: Record<string, SeededTeam>;
-  /** rounds[0] is the first round; the last round holds only the final. */
+  /** rounds[0] is the first round; the last round holds only the final (the winners final in double elimination). */
   rounds: Match[][];
-  /** The semifinal losers race for third place. Null when there are no semifinals. */
+  /** Losers bracket rounds, empty unless double elimination. */
+  losers: Match[][];
+  /** Race format only: the semifinal losers race for third place. */
   thirdPlace: Match | null;
+  /** Double elimination only: winners-bracket champion against losers-bracket champion. */
+  grandFinal: Match | null;
 }
 
 export interface EventInfo {
@@ -55,12 +80,17 @@ export interface EventInfo {
 
 export type Theme = 'dark' | 'light';
 export type View = 'setup' | 'standings' | 'bracket' | 'podium';
+/** Which half of a double-elimination bracket the bracket view shows. */
+export type BracketPane = 'winners' | 'losers';
 
 export interface AppState {
   event: EventInfo;
   entrants: Entrant[];
+  /** Format for the next bracket generated; the current bracket keeps its own. */
+  format: ThirdPlaceFormat;
   bracket: Bracket | null;
   view: View;
+  pane: BracketPane;
   theme: Theme;
   /** First round shown on the bracket view, so early rounds can be hidden. */
   firstRound: number;

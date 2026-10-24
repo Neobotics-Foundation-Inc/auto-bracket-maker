@@ -4,10 +4,13 @@ For competitions; Web-based Application to auto-generate brackets based on time 
 ## What it does
 - Enter up to 50 teams: upload an Excel/CSV sheet (team names in the first column) or type them in.
 - Enter each team's time-trial result in minute, second and millisecond boxes. Typing `:` or `.` moves to the next box, so `1:23.450` can be typed straight through; Enter jumps to the next team. The fastest time is seed 1.
-- Generate a single-elimination bracket. When the team count isn't a power of 2, the top seeds get byes (50 teams → 64 slots, 14 byes).
-- Click the winner of each race to move them on. Click a different team to correct a result, or the same team again to undo it; later rounds that depended on it are cleared.
-- The two semifinal losers race for third place, shown under the final.
-- The **Podium** tab shows 1st (final winner), 2nd (final runner-up) and 3rd (third-place race winner).
+- Generate the bracket. When the team count isn't a power of 2, the top seeds get byes (50 teams → 64 slots, 14 byes).
+- Choose how third place is decided on the setup page:
+  - **Third-place race:** the two semifinal losers race once more, shown under the final.
+  - **Losers bracket:** double elimination. A team is out after two losses; losers drop into a losers bracket whose winner meets the winners-bracket champion in a single grand final. Switch between the winners and losers brackets above the bracket.
+  - **Time-trial tiebreak:** no extra race; the semifinal loser with the faster time trial takes 3rd.
+- Click the winner of each race to move them on. Click a different team to correct a result, or the same team again to undo it; later results that depended on it are cleared.
+- The **Podium** tab shows 1st, 2nd and 3rd.
 - Everything is saved in the browser, so a refresh doesn't lose the bracket.
 
 ## Presenting

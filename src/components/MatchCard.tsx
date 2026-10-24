@@ -1,4 +1,4 @@
-import { isByeMatch, isPlayable } from '../lib/bracket';
+import { findMatch, isByeMatch, isPlayable, matchLabel } from '../lib/bracket';
 import { CARD_H, CARD_W } from '../lib/layout';
 import { formatTime } from '../lib/time';
 import { BYE, type Bracket, type Match, type SlotValue } from '../lib/types';
@@ -15,9 +15,18 @@ export function MatchCard({ bracket, match, x, y, onPick }: Props) {
   const bye = isByeMatch(match);
   const playable = isPlayable(match);
 
-  const row = (slot: SlotValue) => {
+  const row = (slot: SlotValue, side: 0 | 1) => {
     if (slot === BYE) return <div className="team team--bye">Bye</div>;
-    if (slot === null) return <div className="team team--tbd">TBD</div>;
+    if (slot === null) {
+      // Say where a dropping loser will come from, so the losers bracket reads on its own.
+      const source = match.sources[side];
+      const from = source?.take === 'loser' ? findMatch(bracket, source.match) : undefined;
+      return from ? (
+        <div className="team team--source">Loser of {matchLabel(bracket, from)}</div>
+      ) : (
+        <div className="team team--tbd">TBD</div>
+      );
+    }
 
     const team = bracket.teams[slot];
     const state = !match.winner || bye ? '' : match.winner === slot ? 'team--winner' : 'team--loser';
@@ -43,8 +52,8 @@ export function MatchCard({ bracket, match, x, y, onPick }: Props) {
       className={`match ${bye ? 'match--bye' : ''} ${match.winner && !bye ? 'match--decided' : ''}`}
       style={{ left: x, top: y, width: CARD_W, height: CARD_H }}
     >
-      {row(match.a)}
-      {row(match.b)}
+      {row(match.a, 0)}
+      {row(match.b, 1)}
     </div>
   );
 }

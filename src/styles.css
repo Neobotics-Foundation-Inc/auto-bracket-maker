@@ -362,6 +362,87 @@ input.invalid {
   gap: 14px;
 }
 
+/* Third-place format: three selectable cards. */
+.format-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.format-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.format-option:hover {
+  border-color: var(--line);
+}
+
+.format-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.format-option:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.format-option--active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+.format-option__title {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.format-option__detail {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Winners / losers bracket switch. */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.segmented button {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.toolbar .segmented {
+  align-self: flex-end;
+}
+
 .event-fields label span,
 .toolbar label span {
   display: block;
@@ -779,6 +860,18 @@ button.team:disabled {
   opacity: 0.6;
 }
 
+/* "Loser of Quarterfinal 2": where a losers-bracket slot will be filled from. */
+.team--source {
+  display: flex;
+  color: var(--muted);
+  font-size: 13px;
+  font-style: italic;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: none;
+}
+
 @keyframes slot-in {
   from {
     opacity: 0;
@@ -842,16 +935,11 @@ button.team:disabled {
   font-size: 30px;
   font-weight: 700;
   line-height: 1.1;
-  overflow-wrap: anywhere;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  /* Two lines at most; FittedName shrinks the font until the name fits without breaking words. */
+  display: block;
+  width: 100%;
+  max-height: 2.2em;
   overflow: hidden;
-}
-
-.podium-place--1 .podium-place__name {
-  font-size: 38px;
 }
 
 .podium-place__meta {

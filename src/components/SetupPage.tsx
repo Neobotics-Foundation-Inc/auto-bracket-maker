@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { EMPTY_TIME, MAX_TEAMS, mergeNames, newId, validateEntrants } from '../lib/entrants';
-import type { Entrant, EventInfo } from '../lib/types';
+import type { Entrant, EventInfo, ThirdPlaceFormat } from '../lib/types';
 import type { ConfirmRequest } from './ConfirmDialog';
 import { TeamTable } from './TeamTable';
 
@@ -14,7 +14,28 @@ interface Props {
   onGenerate: () => void;
   onViewBracket: () => void;
   onConfirm: (request: ConfirmRequest) => void;
+  format: ThirdPlaceFormat;
+  onFormatChange: (format: ThirdPlaceFormat) => void;
 }
+
+const FORMATS: { value: ThirdPlaceFormat; title: string; detail: string }[] = [
+  {
+    value: 'race',
+    title: 'Third-place race',
+    detail: 'The two semifinal losers race once more. The winner takes 3rd.',
+  },
+  {
+    value: 'double',
+    title: 'Losers bracket',
+    detail:
+      'Double elimination: a team is out after two losses. Losers get a second chance in a losers bracket, whose winner meets the main bracket’s winner in a grand final. About twice the races.',
+  },
+  {
+    value: 'seed',
+    title: 'Time-trial tiebreak',
+    detail: 'No extra race: of the two semifinal losers, the one with the faster time trial takes 3rd.',
+  },
+];
 
 type Notice = { kind: 'info' | 'error'; text: string } | null;
 
@@ -99,6 +120,25 @@ export function SetupPage(props: Props) {
       </section>
 
       <section className="panel">
+        <h2>Third place</h2>
+        <div className="format-options" role="radiogroup" aria-label="How third place is decided">
+          {FORMATS.map((f) => (
+            <label key={f.value} className={`format-option ${props.format === f.value ? 'format-option--active' : ''}`}>
+              <input
+                type="radio"
+                name="format"
+                value={f.value}
+                checked={props.format === f.value}
+                onChange={() => props.onFormatChange(f.value)}
+              />
+              <span className="format-option__title">{f.title}</span>
+              <span className="format-option__detail">{f.detail}</span>
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel">
         <div className="panel-head">
           <h2>
             Teams <span className="count">{entrants.length} / {MAX_TEAMS}</span>
@@ -155,7 +195,7 @@ export function SetupPage(props: Props) {
           ) : (
             <p className="ready">
               {bracketStale
-                ? 'Teams or times changed since the bracket was made. Generate again to update it.'
+                ? 'Teams, times or format changed since the bracket was made. Generate again to update it.'
                 : 'All set. Fastest time is seed 1.'}
             </p>
           )}

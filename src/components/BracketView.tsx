@@ -1,20 +1,22 @@
 import { useMemo } from 'react';
-import { CARD_W, HEADER_H, layoutBracket } from '../lib/layout';
-import type { Bracket } from '../lib/types';
+import { CARD_W, HEADER_H, layoutBracket, layoutLosers } from '../lib/layout';
+import type { Bracket, BracketPane } from '../lib/types';
 import { FitToScreen } from './FitToScreen';
 import { MatchCard } from './MatchCard';
 
 interface Props {
   bracket: Bracket;
+  pane: BracketPane;
   firstRound: number;
   present: boolean;
-  onPick: (round: number, index: number, teamId: string) => void;
+  onPick: (matchId: string, teamId: string) => void;
 }
 
-export function BracketView({ bracket, firstRound, present, onPick }: Props) {
+export function BracketView({ bracket, pane, firstRound, present, onPick }: Props) {
+  const showLosers = pane === 'losers' && bracket.losers.length > 0;
   const layout = useMemo(
-    () => layoutBracket(bracket, { mirrored: present, firstRound }),
-    [bracket, present, firstRound],
+    () => (showLosers ? layoutLosers(bracket) : layoutBracket(bracket, { mirrored: present, firstRound })),
+    [bracket, showLosers, present, firstRound],
   );
 
   return (
@@ -41,7 +43,7 @@ export function BracketView({ bracket, firstRound, present, onPick }: Props) {
             match={match}
             x={x}
             y={y}
-            onPick={(teamId) => onPick(match.round, match.index, teamId)}
+            onPick={(teamId) => onPick(match.id, teamId)}
           />
         ))}
       </div>

@@ -1,13 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { advanceWinner, buildBracket, champion, podium, progress, roundName, seedOrder, withThirdPlace } from './bracket';
+import {
+  advanceWinner,
+  allMatches,
+  buildBracket,
+  findMatch,
+  isPlayable,
+  matchLabel,
+  migrateBracket,
+  podium,
+  progress,
+  roundName,
+  seedOrder,
+} from './bracket';
 import { seedTeams } from './entrants';
-import { layoutBracket } from './layout';
-import { BYE, THIRD_PLACE_ROUND, type Bracket, type SeededTeam } from './types';
+import { layoutBracket, layoutLosers } from './layout';
+import { BYE, type Bracket, type SeededTeam } from './types';
 
 const makeTeams = (n: number): SeededTeam[] =>
   Array.from({ length: n }, (_, i) => ({ id: `t${i + 1}`, name: `Team ${i + 1}`, timeMs: (i + 1) * 1000, seed: i + 1 }));
 
 const seedOf = (b: Bracket, slot: string | null) => (slot && slot !== BYE ? b.teams[slot].seed : slot);
+const match = (b: Bracket, id: string) => findMatch(b, id)!;
+
+/** Plays every race in order, the better seed always winning unless `upsets` names the winner. */
+function playAll(b: Bracket, upsets: Record<string, string> = {}): Bracket {
+  for (let guard = 0; guard < 500; guard++) {
+    const next = allMatches(b).find((m) => isPlayable(m) && !m.winner);
+    if (!next) return b;
+    const better = b.teams[next.a!].seed < b.teams[next.b!].seed ? next.a! : next.b!;
+    b = advanceWinner(b, next.id, upsets[next.id] ?? better);
+  }
+  throw new Error('bracket never finished');
+}
 
 describe('seedOrder', () => {
   it('places seeds so the top two can only meet in the final', () => {
@@ -67,45 +91,176 @@ describe('buildBracket', () => {
 describe('advanceWinner', () => {
   it('moves the winner into the right slot of the next round', () => {
     let b = buildBracket(makeTeams(8));
-    b = advanceWinner(b, 0, 0, 't1');
-    b = advanceWinner(b, 0, 1, 't5');
+    b = advanceWinner(b, 'r0m0', 't1');
+    b = advanceWinner(b, 'r0m1', 't5');
     expect(b.rounds[1][0]).toMatchObject({ a: 't1', b: 't5', winner: null });
   });
 
   it('ignores teams that are not in the match and does not mutate the input', () => {
     const b = buildBracket(makeTeams(8));
-    expect(advanceWinner(b, 0, 0, 't2')).toBe(b);
-    const next = advanceWinner(b, 0, 0, 't1');
+    expect(advanceWinner(b, 'r0m0', 't2')).toBe(b);
+    const next = advanceWinner(b, 'r0m0', 't1');
     expect(b.rounds[0][0].winner).toBeNull();
     expect(next.rounds[0][0].winner).toBe('t1');
   });
 
   it('changing an earlier result clears every later result that depended on it', () => {
     let b = buildBracket(makeTeams(8));
-    for (const [i, team] of ['t1', 't4', 't2', 't3'].entries()) b = advanceWinner(b, 0, i, team);
-    b = advanceWinner(b, 1, 0, 't1');
-    b = advanceWinner(b, 1, 1, 't2');
-    b = advanceWinner(b, 2, 0, 't1');
-    expect(champion(b)).toBe('t1');
+    for (const [i, team] of ['t1', 't4', 't2', 't3'].entries()) b = advanceWinner(b, `r0m${i}`, team);
+    b = advanceWinner(b, 'r1m0', 't1');
+    b = advanceWinner(b, 'r1m1', 't2');
+    b = advanceWinner(b, 'r2m0', 't1');
+    expect(podium(b).first).toBe('t1');
 
-    b = advanceWinner(b, 0, 0, 't8');
+    b = advanceWinner(b, 'r0m0', 't8');
     expect(b.rounds[0][0].winner).toBe('t8');
     expect(b.rounds[1][0]).toMatchObject({ a: 't8', b: 't4', winner: null });
     expect(b.rounds[2][0]).toMatchObject({ a: null, b: 't2', winner: null });
-    expect(champion(b)).toBeNull();
+    expect(podium(b).first).toBeNull();
+  });
+
+  it('clears a later result when the opponent changes, even if the winner is the same', () => {
+    let b = buildBracket(makeTeams(8));
+    for (const [i, team] of ['t1', 't4', 't2', 't3'].entries()) b = advanceWinner(b, `r0m${i}`, team);
+    b = advanceWinner(b, 'r1m0', 't1');
+    b = advanceWinner(b, 'r0m1', 't5');
+    expect(b.rounds[1][0]).toMatchObject({ a: 't1', b: 't5', winner: null });
   });
 
   it('clicking the current winner again undoes the result', () => {
     let b = buildBracket(makeTeams(4));
-    b = advanceWinner(b, 0, 0, 't1');
-    b = advanceWinner(b, 0, 0, 't1');
+    b = advanceWinner(b, 'r0m0', 't1');
+    b = advanceWinner(b, 'r0m0', 't1');
     expect(b.rounds[0][0].winner).toBeNull();
     expect(b.rounds[1][0].a).toBeNull();
   });
 
   it('cannot change a bye', () => {
     const b = buildBracket(makeTeams(3));
-    expect(advanceWinner(b, 0, 0, 't1')).toBe(b);
+    expect(advanceWinner(b, 'r0m0', 't1')).toBe(b);
+  });
+});
+
+describe('third-place race', () => {
+  const playToFinal = () => {
+    let b = buildBracket(makeTeams(8), 'race');
+    for (const [i, team] of ['t1', 't4', 't2', 't3'].entries()) b = advanceWinner(b, `r0m${i}`, team);
+    b = advanceWinner(b, 'r1m0', 't1');
+    b = advanceWinner(b, 'r1m1', 't2');
+    return b;
+  };
+
+  it('puts the semifinal losers into the third-place race', () => {
+    const b = playToFinal();
+    expect(b.thirdPlace).toMatchObject({ a: 't4', b: 't3', winner: null });
+    expect(podium(b)).toEqual({ first: null, second: null, third: null });
+  });
+
+  it('fills the podium from the final and the third-place race', () => {
+    let b = playToFinal();
+    b = advanceWinner(b, 'r2m0', 't2');
+    b = advanceWinner(b, 'third', 't3');
+    expect(podium(b)).toEqual({ first: 't2', second: 't1', third: 't3' });
+    expect(progress(b)).toEqual({ decided: 8, total: 8 });
+  });
+
+  it('correcting a semifinal restarts the third-place race', () => {
+    let b = playToFinal();
+    b = advanceWinner(b, 'third', 't3');
+    b = advanceWinner(b, 'r1m0', 't4');
+    expect(b.thirdPlace).toMatchObject({ a: 't1', b: 't3', winner: null });
+    b = advanceWinner(b, 'r0m1', 't5');
+    expect(b.thirdPlace).toMatchObject({ a: null, b: 't3', winner: null });
+  });
+
+  it('gives third place to the only semifinal loser when there are 3 teams', () => {
+    let b = buildBracket(makeTeams(3), 'race');
+    expect(b.thirdPlace).toMatchObject({ a: BYE, b: null });
+    b = advanceWinner(b, 'r0m1', 't3');
+    expect(b.thirdPlace?.winner).toBe('t2');
+    expect(progress(b).total).toBe(2);
+  });
+
+  it('has no third place with 2 teams, whatever the format', () => {
+    for (const format of ['race', 'double', 'seed'] as const) {
+      let b = buildBracket(makeTeams(2), format);
+      expect(b.thirdPlace).toBeNull();
+      expect(b.losers).toHaveLength(0);
+      b = advanceWinner(b, 'r0m0', 't2');
+      expect(podium(b)).toEqual({ first: 't2', second: 't1', third: null });
+    }
+  });
+});
+
+describe('time-trial tiebreak', () => {
+  it('gives 3rd to the semifinal loser with the better seed, once both semifinals are done', () => {
+    let b = buildBracket(makeTeams(8), 'seed');
+    expect(b.thirdPlace).toBeNull();
+    for (const [i, team] of ['t1', 't4', 't2', 't3'].entries()) b = advanceWinner(b, `r0m${i}`, team);
+    b = advanceWinner(b, 'r1m0', 't4');
+    expect(podium(b).third).toBeNull();
+    b = advanceWinner(b, 'r1m1', 't3');
+    // Semifinal losers are seeds 1 and 2; seed 1 was faster in the time trial.
+    expect(podium(b).third).toBe('t1');
+    expect(progress(b).total).toBe(7);
+  });
+});
+
+describe('double elimination', () => {
+  it('builds 2(k-1) losers rounds and a grand final', () => {
+    const b = buildBracket(makeTeams(50), 'double');
+    expect(b.losers.map((r) => r.length)).toEqual([16, 16, 8, 8, 4, 4, 2, 2, 1, 1]);
+    expect(b.grandFinal).not.toBeNull();
+    expect(b.thirdPlace).toBeNull();
+    // 50 teams, each out after two losses except the champion: 2·49 races, give or take the grand final.
+    expect(progress(b).total).toBe(2 * 49 - 1 + 1);
+  });
+
+  it('drops first-round losers into the losers bracket and later losers in reverse order', () => {
+    let b = buildBracket(makeTeams(8), 'double');
+    for (const [i, team] of ['t1', 't4', 't2', 't3'].entries()) b = advanceWinner(b, `r0m${i}`, team);
+    expect(match(b, 'l0m0')).toMatchObject({ a: 't8', b: 't5' });
+    expect(match(b, 'l0m1')).toMatchObject({ a: 't7', b: 't6' });
+    b = advanceWinner(b, 'r1m0', 't1');
+    b = advanceWinner(b, 'r1m1', 't2');
+    // Semifinal 2's loser meets losers match 1's winner, and vice versa.
+    expect(match(b, 'l1m0').b).toBe('t3');
+    expect(match(b, 'l1m1').b).toBe('t4');
+  });
+
+  it('fills the podium from the grand final and the losers final', () => {
+    const b = playAll(buildBracket(makeTeams(8), 'double'));
+    // Seed 1 wins the winners bracket and the grand final against seed 2, who lost the winners final.
+    expect(podium(b)).toEqual({ first: 't1', second: 't2', third: 't3' });
+    expect(progress(b)).toEqual({ decided: 14, total: 14 });
+  });
+
+  it('lets a team that lost once still win the title', () => {
+    const b = playAll(buildBracket(makeTeams(8), 'double'), { r2m0: 't2', grand: 't1' });
+    expect(match(b, 'grand')).toMatchObject({ a: 't2', b: 't1', winner: 't1' });
+    expect(podium(b).first).toBe('t1');
+  });
+
+  it('settles byes in the losers bracket without races', () => {
+    const b = playAll(buildBracket(makeTeams(50), 'double'));
+    expect(podium(b).first).toBe('t1');
+    expect(progress(b).decided).toBe(progress(b).total);
+    // Nobody is in the losers bracket twice.
+    const losersTeams = b.losers[0].flatMap((m) => [m.a, m.b]).filter((s) => s && s !== BYE);
+    expect(new Set(losersTeams).size).toBe(losersTeams.length);
+  });
+
+  it('works with 3 teams', () => {
+    const b = playAll(buildBracket(makeTeams(3), 'double'));
+    expect(podium(b)).toEqual({ first: 't1', second: 't2', third: 't3' });
+  });
+
+  it('labels where losers come from', () => {
+    const b = buildBracket(makeTeams(8), 'double');
+    expect(matchLabel(b, match(b, 'r1m1'))).toBe('Semifinal 2');
+    expect(matchLabel(b, match(b, 'r2m0'))).toBe('Winners final');
+    expect(matchLabel(b, match(b, 'l3m0'))).toBe('Losers final');
+    expect(matchLabel(b, match(b, 'l0m1'))).toBe('Losers round 1 · 2');
   });
 });
 
@@ -127,7 +282,7 @@ describe('seedTeams', () => {
   });
 });
 
-describe('layoutBracket', () => {
+describe('layout', () => {
   it('mirrors 64 slots into two 16-match halves facing the final', () => {
     const b = buildBracket(makeTeams(50));
     const layout = layoutBracket(b, { mirrored: true, firstRound: 0 });
@@ -144,70 +299,50 @@ describe('layoutBracket', () => {
     expect(layout.cards).toHaveLength(8);
   });
 
-  it('puts the third-place race under the final without overlapping it', () => {
-    for (const teams of [3, 4, 8, 50]) {
-      for (const mirrored of [false, true]) {
-        const b = buildBracket(makeTeams(teams));
-        const layout = layoutBracket(b, { mirrored, firstRound: 0 });
-        const final = layout.cards.find((c) => c.match.id === b.rounds[b.rounds.length - 1][0].id)!;
-        const third = layout.cards.find((c) => c.match.id === 'third')!;
-        expect(third.x).toBe(final.x);
-        expect(third.y).toBeGreaterThan(final.y + 76);
-        expect(third.y + 76).toBeLessThanOrEqual(layout.height);
+  it('puts the third-place race or grand final under the final without overlapping it', () => {
+    for (const format of ['race', 'double'] as const) {
+      for (const teams of [3, 4, 8, 50]) {
+        for (const mirrored of [false, true]) {
+          const b = buildBracket(makeTeams(teams), format);
+          const layout = layoutBracket(b, { mirrored, firstRound: 0 });
+          const final = layout.cards.find((c) => c.match.id === b.rounds[b.rounds.length - 1][0].id)!;
+          const extra = layout.cards.find((c) => c.match.id === (format === 'race' ? 'third' : 'grand'))!;
+          expect(extra.x).toBe(final.x);
+          expect(extra.y).toBeGreaterThan(final.y + 76);
+          expect(extra.y + 76).toBeLessThanOrEqual(layout.height);
+        }
       }
     }
   });
+
+  it('lays out the losers bracket without overlapping cards', () => {
+    const b = buildBracket(makeTeams(50), 'double');
+    const layout = layoutLosers(b);
+    expect(layout.cards).toHaveLength(b.losers.flat().length + 1);
+    expect(layout.headers.map((h) => h.label).slice(-2)).toEqual(['Losers final', 'Grand final']);
+    const boxes = layout.cards.map((c) => `${c.x}:${Math.round(c.y)}`);
+    expect(new Set(boxes).size).toBe(boxes.length);
+  });
 });
 
-describe('third-place race and podium', () => {
-  const playToFinal = () => {
-    let b = buildBracket(makeTeams(8));
-    for (const [i, team] of ['t1', 't4', 't2', 't3'].entries()) b = advanceWinner(b, 0, i, team);
-    b = advanceWinner(b, 1, 0, 't1');
-    b = advanceWinner(b, 1, 1, 't2');
-    return b;
-  };
-
-  it('puts the semifinal losers into the third-place race', () => {
-    const b = playToFinal();
-    expect(b.thirdPlace).toMatchObject({ a: 't4', b: 't3', winner: null });
-    expect(podium(b)).toEqual({ first: null, second: null, third: null });
-  });
-
-  it('fills the podium from the final and the third-place race', () => {
-    let b = playToFinal();
-    b = advanceWinner(b, 2, 0, 't2');
-    b = advanceWinner(b, THIRD_PLACE_ROUND, 0, 't3');
-    expect(podium(b)).toEqual({ first: 't2', second: 't1', third: 't3' });
-    expect(progress(b)).toEqual({ decided: 8, total: 8 });
-  });
-
-  it('correcting a semifinal restarts the third-place race', () => {
-    let b = playToFinal();
-    b = advanceWinner(b, THIRD_PLACE_ROUND, 0, 't3');
-    b = advanceWinner(b, 1, 0, 't4');
-    expect(b.thirdPlace).toMatchObject({ a: 't1', b: 't3', winner: null });
-    b = advanceWinner(b, 0, 1, 't5');
-    expect(b.thirdPlace).toMatchObject({ a: null, b: 't3', winner: null });
-  });
-
-  it('gives third place to the only semifinal loser when there are 3 teams', () => {
-    let b = buildBracket(makeTeams(3));
-    expect(b.thirdPlace).toMatchObject({ a: BYE, b: null });
-    b = advanceWinner(b, 0, 1, 't3');
-    expect(b.thirdPlace?.winner).toBe('t2');
-    expect(progress(b).total).toBe(2);
-  });
-
-  it('has no third-place race with 2 teams', () => {
-    let b = buildBracket(makeTeams(2));
-    expect(b.thirdPlace).toBeNull();
-    b = advanceWinner(b, 0, 0, 't2');
-    expect(podium(b)).toEqual({ first: 't2', second: 't1', third: null });
-  });
-
-  it('adds the race to brackets saved before it existed', () => {
-    const { thirdPlace: _, ...old } = playToFinal();
-    expect(withThirdPlace(old as Bracket).thirdPlace).toMatchObject({ a: 't4', b: 't3', winner: null });
+describe('migrateBracket', () => {
+  it('rebuilds a bracket saved before formats and keeps its results', () => {
+    const fresh = buildBracket(makeTeams(4), 'race');
+    const old = {
+      size: 4,
+      teams: fresh.teams,
+      rounds: [
+        [
+          { id: 'r0m0', round: 0, index: 0, a: 't1', b: 't4', winner: 't4' },
+          { id: 'r0m1', round: 0, index: 1, a: 't2', b: 't3', winner: 't2' },
+        ],
+        [{ id: 'r1m0', round: 1, index: 0, a: 't4', b: 't2', winner: null }],
+      ],
+      thirdPlace: { id: 'third', round: -1, index: 0, a: 't1', b: 't3', winner: 't3' },
+    } as unknown as Bracket;
+    const b = migrateBracket(old);
+    expect(b.format).toBe('race');
+    expect(b.rounds[1][0]).toMatchObject({ a: 't4', b: 't2', winner: null });
+    expect(podium(b).third).toBe('t3');
   });
 });
