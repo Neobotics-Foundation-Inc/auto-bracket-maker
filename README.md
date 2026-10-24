@@ -17,7 +17,7 @@ Press **Present** (or `F`) on the Standings or Bracket view for a fullscreen, pr
 
 ## Design
 Follows the Neobotics website's design standards (`src/lib/nb-tokens.ts` on neobotics-website):
-- **Colours:** Tarmac Blue `#1B2036` chrome, Neobotics Red `#FF0033` accent, Halo White cards, Paddock Beige `#F5EDE4` for the light theme.
+- **Colours:** black chrome as on the home page, Tarmac Blue `#1B2036`, Neobotics Red `#FF0033` accent, Halo White cards, Paddock Beige `#F5EDE4` for the light theme.
 - **Type:** Kernel for titles only, Space Grotesk for body and UI, JetBrains Mono for times.
 
 The dark theme stands the app in the website home page's garage (`public/world/garage.webp`, the site's `film-poster.webp`) under its black bar, with the same smoky glass panels. The Kernel fonts, logos, garage stills and favicon in `public/` are copied from that repo.
