@@ -1,37 +1,85 @@
+/* Neobotics design tokens, from the website's src/lib/nb-tokens.ts:
+   Tarmac Blue chrome, Neobotics Red accent, Halo White cards, Paddock Beige page.
+   Kernel is for titles only; Space Grotesk is body/UI; JetBrains Mono for numbers. */
+@font-face {
+  font-family: 'Kernel';
+  src: url('/fonts/KernelRegular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Kernel';
+  src: url('/fonts/KernelSemibold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Kernel';
+  src: url('/fonts/KernelBold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Kernel';
+  src: url('/fonts/KernelHeavy.woff2') format('woff2');
+  font-weight: 900;
+  font-display: swap;
+}
+
+:root {
+  --nb-red: #ff0033;
+  --nb-red-bright: #ff1a4a;
+  --nb-red-dark: #cc0029;
+  --nb-tarmac: #1b2036;
+  --nb-tarmac-deep: #13172a;
+  --nb-beige: #f5ede4;
+  --nb-beige-dark: #ebe3da;
+  --nb-carbon: #1d1d27;
+  --font-heading: 'Kernel', 'Space Grotesk Variable', sans-serif;
+  --font-body: 'Space Grotesk Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
 :root,
 :root[data-theme='dark'] {
-  --bg: #0a1224;
-  --bg-glow: #13234a;
-  --surface: #111c33;
-  --surface-2: #17243f;
-  --border: #24345a;
-  --text: #edf2fb;
-  --muted: #8b9bbd;
-  --accent: #f5b301;
-  --accent-ink: #1a1200;
-  --accent-soft: rgb(245 179 1 / 0.14);
-  --line: #34476f;
-  --danger: #ff7a7a;
+  --bg: var(--nb-tarmac);
+  --bg-glow: #242b48;
+  --chrome: var(--nb-tarmac-deep);
+  --surface: #242a44;
+  --surface-2: var(--nb-tarmac-deep);
+  --border: rgb(255 255 255 / 0.12);
+  --text: #ffffff;
+  --muted: rgb(255 255 255 / 0.72);
+  --accent: var(--nb-red);
+  --accent-hover: var(--nb-red-bright);
+  --accent-ink: #ffffff;
+  --accent-soft: rgb(255 0 51 / 0.16);
+  --line: rgb(255 255 255 / 0.24);
+  --danger: #ff4d6f;
   --ok: #5ee08f;
-  --shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  --shadow: 0 6px 18px rgb(0 0 0 / 0.3);
+  --shadow-accent: 0 4px 14px rgb(255 0 51 / 0.32);
   color-scheme: dark;
 }
 
 :root[data-theme='light'] {
-  --bg: #eef2f8;
-  --bg-glow: #ffffff;
+  --bg: var(--nb-beige);
+  --bg-glow: var(--nb-beige);
+  --chrome: #ffffff;
   --surface: #ffffff;
-  --surface-2: #f4f7fb;
-  --border: #d5ddea;
-  --text: #0d1830;
-  --muted: #5b6a88;
-  --accent: #c98500;
+  --surface-2: var(--nb-beige);
+  --border: var(--nb-beige-dark);
+  --text: var(--nb-tarmac);
+  --muted: rgb(27 32 54 / 0.72);
+  --accent: var(--nb-red);
+  --accent-hover: var(--nb-red-dark);
   --accent-ink: #ffffff;
-  --accent-soft: rgb(201 133 0 / 0.12);
-  --line: #b5c2d9;
-  --danger: #d63c3c;
-  --ok: #1f9d55;
-  --shadow: 0 4px 14px rgb(13 24 48 / 0.08);
+  --accent-soft: rgb(255 0 51 / 0.09);
+  --line: rgb(27 32 54 / 0.24);
+  --danger: var(--nb-red-dark);
+  --ok: #1f8a4c;
+  --shadow: 0 4px 14px rgb(27 32 54 / 0.08);
+  --shadow-accent: 0 4px 14px rgb(255 0 51 / 0.22);
   color-scheme: light;
 }
 
@@ -51,7 +99,7 @@ body {
   background-color: var(--bg);
   background-attachment: fixed;
   color: var(--text);
-  font-family: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
@@ -60,7 +108,7 @@ body {
 .mono,
 .time,
 input.mono {
-  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
@@ -71,7 +119,8 @@ input.mono {
 h1,
 h2 {
   margin: 0;
-  letter-spacing: -0.01em;
+  font-family: var(--font-heading);
+  font-weight: 700;
 }
 
 button {
@@ -81,26 +130,29 @@ button {
 
 /* ---------- Buttons & inputs ---------- */
 
+/* Pill buttons, as on the website: red primary, outlined secondary. */
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-2);
+  padding: 9px 18px;
+  border: 2px solid color-mix(in srgb, var(--text) 22%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.2s;
 }
 
 .btn:hover:not(:disabled) {
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
@@ -111,11 +163,14 @@ button {
 }
 
 .btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-accent);
 }
 
 .btn-quiet {
-  background: transparent;
+  border-color: transparent;
 }
 
 .icon-btn {
@@ -183,46 +238,60 @@ input.invalid {
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 12px 24px;
+  padding: 10px 40px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--surface) 85%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--chrome);
   position: sticky;
   top: 0;
   z-index: 10;
   flex-wrap: wrap;
 }
 
+/* The website's navbar lockup; the logo file has built-in whitespace, trimmed with negative margins. */
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-weight: 800;
-  font-size: 17px;
+  gap: 4px;
 }
 
+.brand img {
+  height: 76px;
+  width: auto;
+  margin: -14px -30px -14px -36px;
+}
+
+.brand span {
+  padding-left: 14px;
+  border-left: 1px solid var(--border);
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+/* Nav links as on the website: plain text, Neobotics Red when active or hovered. */
 .tabs {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 10px;
-  background: var(--surface-2);
+  gap: 24px;
 }
 
 .tabs button {
   border: 0;
   background: transparent;
-  padding: 6px 14px;
-  border-radius: 7px;
-  font-weight: 600;
-  color: var(--muted);
+  padding: 6px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
   cursor: pointer;
 }
 
+.tabs button:hover:not(:disabled),
 .tabs button.active {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow);
+  color: var(--accent);
+}
+
+.tabs button.active {
+  font-weight: 700;
 }
 
 .tabs button:disabled {
@@ -430,8 +499,19 @@ input.invalid {
 }
 
 .event-header h1 {
-  font-size: 34px;
-  font-weight: 800;
+  font-size: 36px;
+  font-weight: 700;
+}
+
+/* The website's short red rule under section titles. */
+.event-header h1::after {
+  content: '';
+  display: block;
+  width: 80px;
+  height: 4px;
+  margin: 10px auto 0;
+  border-radius: 999px;
+  background: var(--accent);
 }
 
 .event-header p {
@@ -507,10 +587,11 @@ input.invalid {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  font-size: 15px;
-  font-weight: 800;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--muted);
 }
 
@@ -535,10 +616,6 @@ input.invalid {
   border-radius: 10px;
   box-shadow: var(--shadow);
   overflow: hidden;
-}
-
-.match--decided {
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 
 .match--bye {
@@ -610,7 +687,7 @@ button.team:disabled {
 }
 
 .team--winner .time {
-  color: var(--accent);
+  color: var(--text);
 }
 
 .team--loser .name,
@@ -657,13 +734,14 @@ button.team:disabled {
   border-radius: 14px;
   border: 2px solid var(--accent);
   background: linear-gradient(160deg, var(--accent-soft), var(--surface) 70%);
-  box-shadow: 0 0 0 6px var(--accent-soft), var(--shadow);
+  box-shadow: 0 0 0 6px var(--accent-soft), var(--shadow-accent);
   animation: champion-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
 
 .champion__label {
+  font-family: var(--font-heading);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--accent);
@@ -674,8 +752,9 @@ button.team:disabled {
 }
 
 .champion__name {
+  font-family: var(--font-heading);
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.1;
   overflow-wrap: anywhere;
   display: -webkit-box;
@@ -823,7 +902,7 @@ button.team:disabled {
   }
 
   .topbar {
-    padding: 12px 16px;
+    padding: 10px 16px;
     gap: 12px;
   }
 

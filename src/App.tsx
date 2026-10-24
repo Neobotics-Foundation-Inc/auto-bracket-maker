@@ -74,8 +74,8 @@ export default function App() {
   const canPresent = view !== 'setup' && standings.length > 0;
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e) => {
-    const target = e.target as HTMLElement;
-    if (target.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (target?.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'f' || e.key === 'F') {
       if (canPresent || present) togglePresent();
     } else if (e.key === 'Escape' && present) {
@@ -100,8 +100,15 @@ export default function App() {
       {!present && (
         <header className="topbar">
           <div className="brand">
-            <img src="./favicon.svg" alt="" width={28} height={28} />
-            <span>Auto Bracket Maker</span>
+            <img
+              src={
+                theme === 'dark'
+                  ? './brand/neobotics-logo-transparent-white.webp'
+                  : './brand/neobotics-logo-transparent.webp'
+              }
+              alt="Neobotics Foundation Inc."
+            />
+            <span>Bracket Maker</span>
           </div>
           <nav className="tabs" aria-label="Views">
             <button className={view === 'setup' ? 'active' : ''} onClick={() => setView('setup')}>
