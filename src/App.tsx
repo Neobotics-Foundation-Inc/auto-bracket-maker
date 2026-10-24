@@ -96,7 +96,20 @@ export default function App() {
   const counts = bracket ? progress(bracket) : null;
 
   return (
-    <div className={`app ${present ? 'app--present' : ''}`}>
+    <div
+      className={`app ${present ? 'app--present' : ''} ${theme === 'dark' ? 'app--world' : ''} ${
+        view === 'setup' ? 'app--setup' : ''
+      }`}
+    >
+      {theme === 'dark' && (
+        // The Neobotics garage at night, as behind the website's home page.
+        <div className="world" aria-hidden>
+          <picture>
+            <source media="(max-aspect-ratio: 1/1)" srcSet="./world/garage-m.webp" />
+            <img src="./world/garage.webp" alt="" />
+          </picture>
+        </div>
+      )}
       {!present && (
         <header className="topbar">
           <div className="brand">
