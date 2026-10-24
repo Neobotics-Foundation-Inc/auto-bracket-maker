@@ -14,6 +14,8 @@ interface Props {
 export function MatchCard({ bracket, match, x, y, onPick }: Props) {
   const bye = isByeMatch(match);
   const playable = isPlayable(match);
+  // Time-trial times explain the seeding, so they only appear in the opening round.
+  const showTime = match.section === 'main' && match.round === 0;
 
   const row = (slot: SlotValue, side: 0 | 1) => {
     if (slot === BYE) return <div className="team team--bye">Bye</div>;
@@ -42,7 +44,7 @@ export function MatchCard({ bracket, match, x, y, onPick }: Props) {
       >
         <span className="seed">{team.seed}</span>
         <span className="name">{team.name}</span>
-        <span className="time">{formatTime(team.timeMs)}</span>
+        {showTime && <span className="time">{formatTime(team.timeMs)}</span>}
       </button>
     );
   };
