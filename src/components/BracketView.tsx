@@ -16,9 +16,11 @@ interface Props {
 export function BracketView({ bracket, pane, firstRound, losersFirstRound, present, onPick }: Props) {
   const layout = useMemo(() => {
     if (showsBothBrackets(bracket)) return layoutCombined(bracket);
-    if (pane === 'losers' && bracket.losers.length > 0) return layoutLosers(bracket, losersFirstRound);
-    if (pane === 'grand' && bracket.grandFinal) return layoutGrandFinal(bracket);
-    return layoutBracket(bracket, { mirrored: present, firstRound });
+    // On separate tabs, the winners and losers finals appear only on the grand final tab.
+    const tabs = bracket.losers.length > 0;
+    if (tabs && pane === 'losers') return layoutLosers(bracket, losersFirstRound, { withoutFinal: true });
+    if (tabs && pane === 'grand') return layoutGrandFinal(bracket);
+    return layoutBracket(bracket, { mirrored: present, firstRound, withoutFinal: tabs });
   }, [bracket, pane, present, firstRound, losersFirstRound]);
 
   return (

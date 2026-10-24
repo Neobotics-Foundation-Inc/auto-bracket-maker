@@ -329,6 +329,28 @@ describe('layout', () => {
     expect(layout.paths).toHaveLength(2);
   });
 
+  it('leaves the finals off the winners and losers tabs', () => {
+    const b = buildBracket(makeTeams(50), 'double');
+    for (const mirrored of [false, true]) {
+      for (const firstRound of [0, 4, 99]) {
+        const winners = layoutBracket(b, { mirrored, firstRound, withoutFinal: true });
+        expect(winners.cards.some((c) => c.match.id === 'r5m0')).toBe(false);
+        expect(winners.headers.map((h) => h.label)).not.toContain('Winners final');
+        expect(winners.headers.map((h) => h.label)).toContain('Semifinals');
+        for (const c of winners.cards) expect(c.x + 232).toBeLessThanOrEqual(winners.width);
+      }
+    }
+    // Mirrored, the two semifinals face each other across the middle with no lines into it.
+    const semis = layoutBracket(b, { mirrored: true, firstRound: 4, withoutFinal: true });
+    expect(semis.cards.map((c) => c.match.id)).toEqual(['r4m0', 'r4m1']);
+    expect(semis.paths).toHaveLength(0);
+
+    const losers = layoutLosers(b, 0, { withoutFinal: true });
+    expect(losers.cards).toHaveLength(b.losers.flat().length - 1);
+    expect(losers.headers.map((h) => h.label).at(-1)).toBe('Losers round 9');
+    expect(layoutLosers(b, 99, { withoutFinal: true }).headers.map((h) => h.label)).toEqual(['Losers round 9']);
+  });
+
   it('shows both brackets together up to 16 teams', () => {
     expect(showsBothBrackets(buildBracket(makeTeams(16), 'double'))).toBe(true);
     expect(showsBothBrackets(buildBracket(makeTeams(17), 'double'))).toBe(false);

@@ -46,24 +46,31 @@ const elbow = (fromX: number, fromY: number, toX: number, toY: number) => {
  * Positions the main (winners) bracket's cards and connector lines.
  * Linear: rounds run left to right with the final last.
  * Mirrored: two halves face a final in the centre, which is half as tall for projectors.
- * The third-place race, if any, sits under the final.
+ * The third-place race, if any, sits under the final. With `withoutFinal` the bracket
+ * stops at the semifinals (the final is shown elsewhere), and mirrored halves face each
+ * other with nothing in between.
  */
-export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; firstRound: number }): Layout {
+export function layoutBracket(
+  bracket: Bracket,
+  opts: { mirrored: boolean; firstRound: number; withoutFinal?: boolean },
+): Layout {
   const { rounds } = bracket;
   const finalRound = rounds.length - 1;
-  const first = Math.min(Math.max(opts.firstRound, 0), finalRound);
-  const mirrored = opts.mirrored && first < finalRound;
-  const extra = bracket.thirdPlace;
+  const centreFinal = !opts.withoutFinal;
+  const lastRound = centreFinal ? finalRound : finalRound - 1;
+  const first = Math.min(Math.max(opts.firstRound, 0), lastRound);
+  const mirrored = opts.mirrored && (centreFinal ? first < finalRound : true);
+  const extra = centreFinal ? bracket.thirdPlace : null;
 
   // Columns on one side, outermost first. In linear mode the final is the last column.
   const sideRounds: number[] = [];
-  for (let r = first; r < (mirrored ? finalRound : finalRound + 1); r++) sideRounds.push(r);
+  for (let r = first; r < (mirrored && centreFinal ? finalRound : lastRound + 1); r++) sideRounds.push(r);
 
   const outerCount = mirrored ? rounds[first].length / 2 : rounds[first].length;
   const bodyH = Math.max(outerCount * (CARD_H + ROW_GAP), extra ? MIN_BODY_H : 0);
   const height = HEADER_H + bodyH;
   const step = CARD_W + COL_GAP;
-  const columns = mirrored ? sideRounds.length * 2 + 1 : sideRounds.length;
+  const columns = mirrored ? sideRounds.length * 2 + (centreFinal ? 1 : 0) : sideRounds.length;
   const width = columns * CARD_W + (columns - 1) * COL_GAP;
 
   const cards: CardBox[] = [];
@@ -84,7 +91,7 @@ export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; first
         cards.push({ match, x, y: cy - CARD_H / 2 });
 
         const isLastCol = col === sideRounds.length - 1;
-        if (isLastCol && !mirrored) return;
+        if (isLastCol && !(mirrored && centreFinal)) return;
         // Parent is the next column on this side, or the final in the centre.
         const parentX = isLastCol ? sideRounds.length * step : xOf(col + 1);
         const parentY = isLastCol ? HEADER_H + bodyH / 2 : centerY(i >> 1, matches.length / 2);
@@ -96,8 +103,8 @@ export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; first
   placeSide('left');
   const finalY = HEADER_H + bodyH / 2 - CARD_H / 2;
   let finalX: number;
-  if (mirrored) {
-    placeSide('right');
+  if (mirrored) placeSide('right');
+  if (mirrored && centreFinal) {
     finalX = sideRounds.length * step;
     headers.push({ label: sectionRoundName(bracket, 'main', finalRound), x: finalX, y: 0 });
     cards.push({ match: rounds[finalRound][0], x: finalX, y: finalY });
@@ -117,10 +124,12 @@ export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; first
 /**
  * Positions the losers bracket, left to right. A round the same size as the one before
  * takes in teams dropping from the winners bracket (one line in per match); a round half
- * the size pairs off the previous winners (two lines in). Rounds before `firstRound` are hidden.
+ * the size pairs off the previous winners (two lines in). Rounds before `firstRound` are
+ * hidden, and with `withoutFinal` so is the losers final (shown elsewhere).
  */
-export function layoutLosers(bracket: Bracket, firstRound = 0): Layout {
-  const columns = bracket.losers.slice(Math.min(Math.max(firstRound, 0), bracket.losers.length - 1));
+export function layoutLosers(bracket: Bracket, firstRound = 0, { withoutFinal = false } = {}): Layout {
+  const shown = withoutFinal ? bracket.losers.slice(0, -1) : bracket.losers;
+  const columns = shown.slice(Math.min(Math.max(firstRound, 0), shown.length - 1));
   const step = CARD_W + COL_GAP;
   const bodyH = Math.max(...columns.map((c) => c.length)) * (CARD_H + ROW_GAP);
   const width = columns.length * CARD_W + (columns.length - 1) * COL_GAP;

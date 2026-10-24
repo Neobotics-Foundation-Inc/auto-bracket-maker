@@ -57,8 +57,9 @@ export default function App() {
   // Early rounds can be hidden on the winners and losers views, each remembering its own starting round.
   const canHideRounds = !combined && pane !== 'grand';
   const fromKey = pane === 'losers' ? 'losersFirstRound' : 'firstRound';
-  const shownFrom = state[fromKey];
-  const roundCount = (pane === 'losers' ? bracket?.losers.length : bracket?.rounds.length) ?? 0;
+  // On separate tabs the finals move to the grand final tab, so they aren't offered here.
+  const roundCount = ((pane === 'losers' ? bracket?.losers.length : bracket?.rounds.length) ?? 0) - (split ? 1 : 0);
+  const shownFrom = Math.min(state[fromKey], Math.max(roundCount - 1, 0));
   const roundLabel = (r: number) => sectionRoundName(bracket!, pane === 'losers' ? 'losers' : 'main', r);
   const setShownFrom = (r: number) => patch({ [fromKey]: Math.min(Math.max(r, 0), roundCount - 1) });
 
