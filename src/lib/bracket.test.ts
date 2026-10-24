@@ -323,11 +323,13 @@ describe('layout', () => {
     for (const teams of [3, 8, 16]) {
       const b = buildBracket(makeTeams(teams), 'double');
       const layout = layoutCombined(b);
-      // Every race once: the grand final only in the losers row.
+      // Every race once, with the grand final between the winners and losers brackets.
       expect(layout.cards).toHaveLength(allMatches(b).length);
       const winnersBottom = Math.max(...layout.cards.filter((c) => c.match.section === 'main').map((c) => c.y + 76));
-      const losersTop = Math.min(...layout.cards.filter((c) => c.match.section !== 'main').map((c) => c.y));
-      expect(losersTop).toBeGreaterThan(winnersBottom);
+      const losersTop = Math.min(...layout.cards.filter((c) => c.match.section === 'losers').map((c) => c.y));
+      const grand = layout.cards.find((c) => c.match.section === 'grand')!;
+      expect(grand.y).toBeGreaterThan(winnersBottom);
+      expect(grand.y + 76).toBeLessThan(losersTop);
       for (const c of layout.cards) expect(c.x + 232).toBeLessThanOrEqual(layout.width);
       expect(layout.headers.filter((h) => h.section).map((h) => h.label)).toEqual(['Winners bracket', 'Losers bracket']);
     }

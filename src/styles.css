@@ -305,6 +305,79 @@ input.invalid {
 
 .topbar .actions {
   margin-left: auto;
+  align-items: center;
+}
+
+/* Light/dark switch: a pill track with sun and moon, and a knob that slides over the active one. */
+.theme-switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 64px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.theme-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: var(--shadow-accent);
+  transition: transform 0.2s ease;
+}
+
+.theme-switch--dark .theme-switch__knob {
+  transform: translateX(32px);
+}
+
+.theme-switch__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+
+.theme-switch__icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-switch__icon--moon svg {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* The icon under the knob shows in white. */
+.theme-switch:not(.theme-switch--dark) .theme-switch__icon--sun,
+.theme-switch--dark .theme-switch__icon--moon {
+  color: var(--accent-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch__knob {
+    transition: none;
+  }
 }
 
 .page {

@@ -4,6 +4,7 @@ import { ConfirmDialog, type ConfirmRequest } from './components/ConfirmDialog';
 import { PodiumView } from './components/PodiumView';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
+import { ThemeSwitch } from './components/ThemeSwitch';
 import { advanceWinner, buildBracket, progress, roundName } from './lib/bracket';
 import { seedTeams } from './lib/entrants';
 import { showsBothBrackets } from './lib/layout';
@@ -179,13 +180,7 @@ export default function App() {
             </button>
           </nav>
           <div className="actions">
-            <button
-              className="btn btn-quiet"
-              onClick={() => patch({ theme: theme === 'dark' ? 'light' : 'dark' })}
-              title="Switch colour theme"
-            >
-              {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-            </button>
+            <ThemeSwitch theme={theme} onChange={(t) => patch({ theme: t })} />
             <button className="btn btn-primary" disabled={!canPresent} onClick={enterPresent} title="Present (F)">
               Present
             </button>

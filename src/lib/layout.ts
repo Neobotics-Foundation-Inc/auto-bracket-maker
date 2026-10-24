@@ -120,10 +120,11 @@ export function layoutBracket(
 /**
  * Positions the losers bracket, left to right. A round the same size as the one before
  * takes in teams dropping from the winners bracket (one line in per match); a round half
- * the size pairs off the previous winners (two lines in). The grand final comes last.
+ * the size pairs off the previous winners (two lines in). The grand final comes last
+ * unless `withGrand` is false.
  */
-export function layoutLosers(bracket: Bracket): Layout {
-  const columns = bracket.grandFinal ? [...bracket.losers, [bracket.grandFinal]] : bracket.losers;
+export function layoutLosers(bracket: Bracket, { withGrand = true } = {}): Layout {
+  const columns = withGrand && bracket.grandFinal ? [...bracket.losers, [bracket.grandFinal]] : bracket.losers;
   const step = CARD_W + COL_GAP;
   const bodyH = Math.max(...columns.map((c) => c.length)) * (CARD_H + ROW_GAP);
   const width = columns.length * CARD_W + (columns.length - 1) * COL_GAP;
@@ -158,7 +159,8 @@ export function layoutLosers(bracket: Bracket): Layout {
 /** Double-elimination brackets up to this size fit both halves on one screen. */
 const COMBINED_MAX_SIZE = 16;
 const SECTION_H = 40;
-const SECTION_GAP = 48;
+// Space above and below the grand final, which sits between the two brackets.
+const GRAND_PAD = 28;
 
 export const showsBothBrackets = (bracket: Bracket) =>
   bracket.losers.length > 0 && bracket.size <= COMBINED_MAX_SIZE;
@@ -177,27 +179,33 @@ function shift(layout: Layout, dy: number): Layout {
 
 /**
  * Winners bracket on top and losers bracket underneath, for smaller double-elimination
- * events. The grand final ends the losers row, with a line in from the winners final.
+ * events. The grand final sits between the two, past their last rounds, with a line in
+ * from the winners final above and the losers final below.
  */
 export function layoutCombined(bracket: Bracket): Layout {
   const winners = shift(layoutBracket(bracket, { mirrored: false, firstRound: 0, withExtra: false }), SECTION_H);
-  const losersTop = winners.height + SECTION_H + SECTION_GAP;
-  const losers = shift(layoutLosers(bracket), losersTop + SECTION_H);
+  const grandLabelY = SECTION_H + winners.height + GRAND_PAD;
+  const grandY = grandLabelY + EXTRA_LABEL_H;
+  const losersTop = grandY + CARD_H + GRAND_PAD;
+  const losers = shift(layoutLosers(bracket, { withGrand: false }), losersTop + SECTION_H);
+  const grandX = Math.max(winners.width, losers.width) + COL_GAP;
+  const grandCy = grandY + CARD_H / 2;
 
-  const final = winners.cards.find((c) => c.match.section === 'main' && c.match.round === bracket.rounds.length - 1)!;
-  const grand = losers.cards.find((c) => c.match.section === 'grand')!;
-  // Around the right of the grand final, so the line doesn't cross the losers bracket's headings.
-  const laneX = grand.x + CARD_W + COL_GAP / 2;
-  const toFinal = `M${final.x + CARD_W} ${final.y + CARD_H / 2}H${laneX}V${grand.y + CARD_H / 2}H${grand.x + CARD_W}`;
+  const lastCard = (cards: CardBox[], section: 'main' | 'losers', round: number) =>
+    cards.find((c) => c.match.section === section && c.match.round === round)!;
+  const final = lastCard(winners.cards, 'main', bracket.rounds.length - 1);
+  const losersFinal = lastCard(losers.cards, 'losers', bracket.losers.length - 1);
+  const into = (from: CardBox) => elbow(from.x + CARD_W, from.y + CARD_H / 2, grandX, grandCy);
 
   return {
-    width: Math.max(winners.width, losers.width) + COL_GAP / 2,
+    width: grandX + CARD_W,
     height: losersTop + SECTION_H + losers.height,
-    cards: [...winners.cards, ...losers.cards],
-    paths: [...winners.paths, ...losers.paths, toFinal],
+    cards: [...winners.cards, { match: bracket.grandFinal!, x: grandX, y: grandY }, ...losers.cards],
+    paths: [...winners.paths, ...losers.paths, into(final), into(losersFinal)],
     headers: [
       { label: 'Winners bracket', x: 0, y: 0, section: true },
       ...winners.headers,
+      { label: sectionRoundName(bracket, 'grand', 0), x: grandX, y: grandLabelY, sub: true },
       { label: 'Losers bracket', x: 0, y: losersTop, section: true },
       ...losers.headers,
     ],
