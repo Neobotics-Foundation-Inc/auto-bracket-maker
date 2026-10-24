@@ -21,6 +21,7 @@ export const initialState: AppState = {
   pane: 'winners',
   theme: 'dark',
   firstRound: 0,
+  losersFirstRound: 0,
 };
 
 export function loadState(): AppState {

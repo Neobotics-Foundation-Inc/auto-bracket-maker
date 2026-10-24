@@ -5,7 +5,7 @@ import { PodiumView } from './components/PodiumView';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
 import { ThemeSwitch } from './components/ThemeSwitch';
-import { advanceWinner, buildBracket, progress, roundName } from './lib/bracket';
+import { advanceWinner, buildBracket, progress, sectionRoundName } from './lib/bracket';
 import { seedTeams } from './lib/entrants';
 import { showsBothBrackets } from './lib/layout';
 import { initialState, loadState, saveState } from './lib/storage';
@@ -30,7 +30,7 @@ export default function App() {
   const [present, setPresent] = useState(false);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const closeConfirm = useCallback(() => setConfirmRequest(null), []);
-  const { event, entrants, format, bracket, view, theme, firstRound } = state;
+  const { event, entrants, format, bracket, view, theme } = state;
   const patch = useCallback((p: Partial<AppState>) => setState((s) => ({ ...s, ...p })), []);
 
   useEffect(() => saveState(state), [state]);
@@ -48,27 +48,31 @@ export default function App() {
   );
   const stale = !!bracket && (signature(bracketTeams!) !== signature(seeded) || bracket.format !== format);
   const standings = bracketTeams ?? seeded;
-  const roundCount = bracket?.rounds.length ?? 0;
   const hasLosers = !!bracket?.losers.length;
   // Smaller double-elimination brackets show both halves together; larger ones switch between them.
   const combined = !!bracket && showsBothBrackets(bracket);
   const split = hasLosers && !combined;
   const pane = split ? state.pane : 'winners';
-  const canHideRounds = !combined && pane === 'winners';
+
+  // Early rounds can be hidden on the winners and losers views, each remembering its own starting round.
+  const canHideRounds = !combined && pane !== 'grand';
+  const fromKey = pane === 'losers' ? 'losersFirstRound' : 'firstRound';
+  const shownFrom = state[fromKey];
+  const roundCount = (pane === 'losers' ? bracket?.losers.length : bracket?.rounds.length) ?? 0;
+  const roundLabel = (r: number) => sectionRoundName(bracket!, pane === 'losers' ? 'losers' : 'main', r);
+  const setShownFrom = (r: number) => patch({ [fromKey]: Math.min(Math.max(r, 0), roundCount - 1) });
 
   const setView = (next: View) => patch({ view: next });
-  const shiftRound = useCallback(
-    (delta: number) =>
-      setState((s) => {
-        const max = (s.bracket?.rounds.length ?? 1) - 1;
-        return { ...s, firstRound: Math.min(Math.max(s.firstRound + delta, 0), max) };
-      }),
-    [],
-  );
 
   function generate() {
     const build = () =>
-      patch({ bracket: buildBracket(seeded, format), view: 'bracket', pane: 'winners', firstRound: 0 });
+      patch({
+        bracket: buildBracket(seeded, format),
+        view: 'bracket',
+        pane: 'winners',
+        firstRound: 0,
+        losersFirstRound: 0,
+      });
     if (!bracket || progress(bracket).decided === 0) return build();
     setConfirmRequest({
       title: 'Regenerate the bracket?',
@@ -116,9 +120,9 @@ export default function App() {
     } else if (e.key === 'Escape' && present) {
       exitPresent();
     } else if (view === 'bracket' && canHideRounds && e.key === 'ArrowRight') {
-      shiftRound(1);
+      setShownFrom(shownFrom + 1);
     } else if (view === 'bracket' && canHideRounds && e.key === 'ArrowLeft') {
-      shiftRound(-1);
+      setShownFrom(shownFrom - 1);
     }
   };
   useEffect(() => {
@@ -236,10 +240,10 @@ export default function App() {
               {canHideRounds && (
                 <label>
                   <span>Show from</span>
-                  <select value={firstRound} onChange={(e) => patch({ firstRound: Number(e.target.value) })}>
-                    {bracket.rounds.map((_, r) => (
+                  <select value={shownFrom} onChange={(e) => setShownFrom(Number(e.target.value))}>
+                    {Array.from({ length: roundCount }, (_, r) => (
                       <option key={r} value={r}>
-                        {roundName(bracket.size, r)}
+                        {roundLabel(r)}
                       </option>
                     ))}
                   </select>
@@ -264,7 +268,8 @@ export default function App() {
           <BracketView
             bracket={bracket}
             pane={pane}
-            firstRound={firstRound}
+            firstRound={state.firstRound}
+            losersFirstRound={state.losersFirstRound}
             present={present}
             onPick={(matchId, teamId) => patch({ bracket: advanceWinner(bracket, matchId, teamId) })}
           />
@@ -282,14 +287,19 @@ export default function App() {
           {view === 'bracket' && split && paneSwitch}
           {view === 'bracket' && bracket && canHideRounds && (
             <>
-              <button className="btn" onClick={() => shiftRound(-1)} disabled={firstRound === 0} title="Show earlier rounds (←)">
-                ◀
-              </button>
-              <span>{firstRound === 0 ? 'All rounds' : `From ${roundName(bracket.size, firstRound)}`}</span>
               <button
                 className="btn"
-                onClick={() => shiftRound(1)}
-                disabled={firstRound >= roundCount - 1}
+                onClick={() => setShownFrom(shownFrom - 1)}
+                disabled={shownFrom === 0}
+                title="Show earlier rounds (←)"
+              >
+                ◀
+              </button>
+              <span>{shownFrom === 0 ? 'All rounds' : `From ${roundLabel(shownFrom)}`}</span>
+              <button
+                className="btn"
+                onClick={() => setShownFrom(shownFrom + 1)}
+                disabled={shownFrom >= roundCount - 1}
                 title="Hide earlier rounds (→)"
               >
                 ▶

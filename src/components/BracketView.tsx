@@ -8,17 +8,18 @@ interface Props {
   bracket: Bracket;
   pane: BracketPane;
   firstRound: number;
+  losersFirstRound: number;
   present: boolean;
   onPick: (matchId: string, teamId: string) => void;
 }
 
-export function BracketView({ bracket, pane, firstRound, present, onPick }: Props) {
+export function BracketView({ bracket, pane, firstRound, losersFirstRound, present, onPick }: Props) {
   const layout = useMemo(() => {
     if (showsBothBrackets(bracket)) return layoutCombined(bracket);
-    if (pane === 'losers' && bracket.losers.length > 0) return layoutLosers(bracket);
+    if (pane === 'losers' && bracket.losers.length > 0) return layoutLosers(bracket, losersFirstRound);
     if (pane === 'grand' && bracket.grandFinal) return layoutGrandFinal(bracket);
     return layoutBracket(bracket, { mirrored: present, firstRound });
-  }, [bracket, pane, present, firstRound]);
+  }, [bracket, pane, present, firstRound, losersFirstRound]);
 
   return (
     // The grand final is a single small picture, so it's always scaled to fill the space.

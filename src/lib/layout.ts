@@ -117,10 +117,10 @@ export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; first
 /**
  * Positions the losers bracket, left to right. A round the same size as the one before
  * takes in teams dropping from the winners bracket (one line in per match); a round half
- * the size pairs off the previous winners (two lines in).
+ * the size pairs off the previous winners (two lines in). Rounds before `firstRound` are hidden.
  */
-export function layoutLosers(bracket: Bracket): Layout {
-  const columns = bracket.losers;
+export function layoutLosers(bracket: Bracket, firstRound = 0): Layout {
+  const columns = bracket.losers.slice(Math.min(Math.max(firstRound, 0), bracket.losers.length - 1));
   const step = CARD_W + COL_GAP;
   const bodyH = Math.max(...columns.map((c) => c.length)) * (CARD_H + ROW_GAP);
   const width = columns.length * CARD_W + (columns.length - 1) * COL_GAP;

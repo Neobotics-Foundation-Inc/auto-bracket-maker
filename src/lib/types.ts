@@ -94,4 +94,6 @@ export interface AppState {
   theme: Theme;
   /** First round shown on the bracket view, so early rounds can be hidden. */
   firstRound: number;
+  /** The same for the losers bracket view. */
+  losersFirstRound: number;
 }

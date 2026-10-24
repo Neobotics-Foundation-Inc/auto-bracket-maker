@@ -354,6 +354,13 @@ describe('layout', () => {
     const layout = layoutLosers(b);
     expect(layout.cards).toHaveLength(b.losers.flat().length);
     expect(layout.headers.map((h) => h.label).at(-1)).toBe('Losers final');
+
+    // Hiding early losers rounds starts from the chosen round and makes the bracket shorter.
+    const fromRound5 = layoutLosers(b, 4);
+    expect(fromRound5.headers[0].label).toBe('Losers round 5');
+    expect(fromRound5.cards).toHaveLength(b.losers.slice(4).flat().length);
+    expect(fromRound5.height).toBeLessThan(layout.height);
+    expect(layoutLosers(b, 99).headers.map((h) => h.label)).toEqual(['Losers final']);
     const boxes = layout.cards.map((c) => `${c.x}:${Math.round(c.y)}`);
     expect(new Set(boxes).size).toBe(boxes.length);
   });
