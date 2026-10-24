@@ -1,6 +1,7 @@
 import { useRef, useState, type DragEvent } from 'react';
-import { MAX_TEAMS, mergeNames, newId, validateEntrants } from '../lib/entrants';
+import { EMPTY_TIME, MAX_TEAMS, mergeNames, newId, validateEntrants } from '../lib/entrants';
 import type { Entrant, EventInfo } from '../lib/types';
+import type { ConfirmRequest } from './ConfirmDialog';
 import { TeamTable } from './TeamTable';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   onEntrantsChange: (entrants: Entrant[]) => void;
   onGenerate: () => void;
   onViewBracket: () => void;
+  onConfirm: (request: ConfirmRequest) => void;
 }
 
 type Notice = { kind: 'info' | 'error'; text: string } | null;
@@ -51,7 +53,7 @@ export function SetupPage(props: Props) {
   }
 
   function addTeam() {
-    onEntrantsChange([...entrants, { id: newId(), name: '', timeText: '' }]);
+    onEntrantsChange([...entrants, { id: newId(), name: '', ...EMPTY_TIME }]);
     // Focus the new name box after React renders it.
     requestAnimationFrame(() => {
       const names = document.querySelectorAll<HTMLInputElement>('.team-table input:not([data-time-input])');
@@ -60,10 +62,16 @@ export function SetupPage(props: Props) {
   }
 
   function clearTeams() {
-    if (entrants.length && confirm('Remove all teams and times?')) {
-      onEntrantsChange([]);
-      setNotice(null);
-    }
+    if (!entrants.length) return;
+    props.onConfirm({
+      title: 'Remove all teams?',
+      message: 'Every team name and time on this page will be cleared.',
+      confirmLabel: 'Remove all',
+      onConfirm: () => {
+        onEntrantsChange([]);
+        setNotice(null);
+      },
+    });
   }
 
   return (

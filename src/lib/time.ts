@@ -1,3 +1,5 @@
+import type { TimeParts } from './types';
+
 // Accepts "83.45", "1:23.45" or "1:02:03.5" (hours:minutes:seconds).
 const TIME_RE = /^(?:(?:(\d+):)?(\d+):)?(\d+(?:\.\d+)?)$/;
 
@@ -16,6 +18,33 @@ export function parseTime(input: string): number | null {
 
   const ms = Math.round(((hours * 60 + minutes) * 60 + seconds) * 1000);
   return ms > 0 ? ms : null;
+}
+
+export type TimeCheck = { ms: number; error: null } | { ms: null; error: string | null };
+
+/**
+ * Validates minute, second and millisecond boxes. Blank boxes count as 0; all blank is
+ * "no time yet" (error null), anything unusable gives an error message.
+ */
+export function checkTimeParts({ min, sec, ms }: TimeParts): TimeCheck {
+  if (!min.trim() && !sec.trim() && !ms.trim()) return { ms: null, error: null };
+  if (![min, sec, ms].every((part) => /^\d*$/.test(part.trim()))) return { ms: null, error: 'Digits only' };
+  const [m, s, f] = [min, sec, ms].map((part) => Number(part.trim() || 0));
+  if (s >= 60) return { ms: null, error: 'Seconds must be under 60' };
+  if (f >= 1000) return { ms: null, error: 'Milliseconds must be under 1000' };
+  const total = (m * 60 + s) * 1000 + f;
+  return total > 0 ? { ms: total, error: null } : { ms: null, error: 'Time must be above 0' };
+}
+
+export const timeFromParts = (parts: TimeParts) => checkTimeParts(parts).ms;
+
+/** Splits milliseconds into box values, folding hours into minutes: 83450 → 1 / 23 / 450. */
+export function partsFromMs(total: number): TimeParts {
+  return {
+    min: String(Math.floor(total / 60_000)),
+    sec: String(Math.floor((total % 60_000) / 1000)),
+    ms: String(total % 1000).padStart(3, '0'),
+  };
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');

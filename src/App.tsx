@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BracketView } from './components/BracketView';
+import { ConfirmDialog, type ConfirmRequest } from './components/ConfirmDialog';
 import { PodiumView } from './components/PodiumView';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
@@ -19,6 +20,8 @@ const signature = (teams: SeededTeam[]) => JSON.stringify(teams.map((t) => [t.id
 export default function App() {
   const [state, setState] = useState<AppState>(loadState);
   const [present, setPresent] = useState(false);
+  const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
+  const closeConfirm = useCallback(() => setConfirmRequest(null), []);
   const { event, entrants, bracket, view, theme, firstRound } = state;
   const patch = useCallback((p: Partial<AppState>) => setState((s) => ({ ...s, ...p })), []);
 
@@ -50,13 +53,24 @@ export default function App() {
   );
 
   function generate() {
-    const hasResults = bracket?.rounds.flat().some((m) => m.winner && !isByeMatch(m));
-    if (hasResults && !confirm('Regenerating clears every race result. Continue?')) return;
-    patch({ bracket: buildBracket(seeded), view: 'bracket', firstRound: 0 });
+    const build = () => patch({ bracket: buildBracket(seeded), view: 'bracket', firstRound: 0 });
+    const races = bracket ? [...bracket.rounds.flat(), ...(bracket.thirdPlace ? [bracket.thirdPlace] : [])] : [];
+    if (!races.some((m) => m.winner && !isByeMatch(m))) return build();
+    setConfirmRequest({
+      title: 'Regenerate the bracket?',
+      message: 'This builds a new bracket from the current teams and times, and clears every race result.',
+      confirmLabel: 'Regenerate',
+      onConfirm: build,
+    });
   }
 
   function resetAll() {
-    if (confirm('Clear the event, all teams, times and results?')) setState({ ...initialState, theme });
+    setConfirmRequest({
+      title: 'Reset everything?',
+      message: 'This clears the event name, every team and time, and all race results.',
+      confirmLabel: 'Reset all',
+      onConfirm: () => setState({ ...initialState, theme }),
+    });
   }
 
   // Present mode: fullscreen with editing controls hidden. Leaving fullscreen (Esc) leaves present mode.
@@ -82,7 +96,7 @@ export default function App() {
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e) => {
     const target = e.target instanceof Element ? e.target : null;
-    if (target?.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (confirmRequest || target?.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'f' || e.key === 'F') {
       if (canPresent || present) togglePresent();
     } else if (e.key === 'Escape' && present) {
@@ -173,6 +187,7 @@ export default function App() {
           onEntrantsChange={(list) => patch({ entrants: list })}
           onGenerate={generate}
           onViewBracket={() => setView('bracket')}
+          onConfirm={setConfirmRequest}
         />
       )}
 
@@ -260,11 +275,13 @@ export default function App() {
                 {v.label}
               </button>
             ))}
-          <button className="btn" onClick={exitPresent} title="Exit (Esc)">
-            Exit
+          <button className="btn btn-primary" onClick={exitPresent} title="Exit present mode (Esc)">
+            Exit present mode
           </button>
         </div>
       )}
+
+      {confirmRequest && <ConfirmDialog request={confirmRequest} onClose={closeConfirm} />}
     </div>
   );
 }

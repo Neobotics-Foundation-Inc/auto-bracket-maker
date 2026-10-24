@@ -1,5 +1,14 @@
 import { withThirdPlace } from './bracket';
-import type { AppState } from './types';
+import { partsFromMs, parseTime } from './time';
+import type { AppState, Entrant } from './types';
+
+/** Entrants saved before times had separate boxes kept one timeText string. */
+function migrateEntrant(saved: Entrant & { timeText?: string }): Entrant {
+  if (saved.timeText === undefined) return saved;
+  const { timeText, ...rest } = saved;
+  const ms = parseTime(timeText);
+  return { ...rest, ...(ms === null ? { min: '', sec: '', ms: '' } : partsFromMs(ms)) };
+}
 
 const KEY = 'auto-bracket-maker:v1';
 
@@ -17,7 +26,11 @@ export function loadState(): AppState {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const state: AppState = { ...initialState, ...(JSON.parse(raw) as Partial<AppState>) };
-      return { ...state, bracket: state.bracket && withThirdPlace(state.bracket) };
+      return {
+        ...state,
+        entrants: state.entrants.map(migrateEntrant),
+        bracket: state.bracket && withThirdPlace(state.bracket),
+      };
     }
   } catch {
     // Storage blocked or corrupt: start fresh.

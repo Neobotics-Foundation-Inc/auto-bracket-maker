@@ -112,11 +112,11 @@ describe('advanceWinner', () => {
 describe('seedTeams', () => {
   it('orders by time and keeps entry order on ties', () => {
     const seeded = seedTeams([
-      { id: 'a', name: 'Slow', timeText: '1:10.00' },
-      { id: 'b', name: 'Fast', timeText: '58.2' },
-      { id: 'c', name: 'Tie first', timeText: '1:00' },
-      { id: 'd', name: 'Tie second', timeText: '60' },
-      { id: 'e', name: 'No time', timeText: '' },
+      { id: 'a', name: 'Slow', min: '1', sec: '10', ms: '0' },
+      { id: 'b', name: 'Fast', min: '', sec: '58', ms: '200' },
+      { id: 'c', name: 'Tie first', min: '1', sec: '', ms: '' },
+      { id: 'd', name: 'Tie second', min: '1', sec: '0', ms: '000' },
+      { id: 'e', name: 'No time', min: '', sec: '', ms: '' },
     ]);
     expect(seeded.map((t) => [t.name, t.seed])).toEqual([
       ['Fast', 1],

@@ -7,11 +7,17 @@ export const THIRD_PLACE_ROUND = -1;
 /** A bracket slot holds a team id, BYE, or null while it waits for a winner. */
 export type SlotValue = string | null;
 
+/** A time-trial result as typed into its minute, second and millisecond boxes (digits only). */
+export interface TimeParts {
+  min: string;
+  sec: string;
+  ms: string;
+}
+
 /** A row on the setup page, as the user typed it. */
-export interface Entrant {
+export interface Entrant extends TimeParts {
   id: string;
   name: string;
-  timeText: string;
 }
 
 /** A team with a valid time-trial result and its resulting seed (1 = fastest). */

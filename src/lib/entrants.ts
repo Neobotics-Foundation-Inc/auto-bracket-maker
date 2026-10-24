@@ -1,7 +1,9 @@
-import { parseTime } from './time';
+import { timeFromParts } from './time';
 import type { Entrant, SeededTeam } from './types';
 
 export const MAX_TEAMS = 50;
+
+export const EMPTY_TIME = { min: '', sec: '', ms: '' } as const;
 
 export function newId(): string {
   return globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
@@ -18,7 +20,7 @@ export interface MergeResult {
 
 /** Appends uploaded names, dropping blank rows, duplicates and anything past MAX_TEAMS. */
 export function mergeNames(existing: Entrant[], names: string[]): MergeResult {
-  const entrants = existing.filter((e) => e.name.trim() || e.timeText.trim());
+  const entrants = existing.filter((e) => e.name.trim() || e.min.trim() || e.sec.trim() || e.ms.trim());
   const seen = new Set(entrants.map((e) => normalizeName(e.name)));
   let added = 0;
   let duplicates = 0;
@@ -32,7 +34,7 @@ export function mergeNames(existing: Entrant[], names: string[]): MergeResult {
     } else if (entrants.length >= MAX_TEAMS) {
       overflow++;
     } else {
-      entrants.push({ id: newId(), name, timeText: '' });
+      entrants.push({ id: newId(), name, ...EMPTY_TIME });
       seen.add(normalizeName(name));
       added++;
     }
@@ -43,7 +45,7 @@ export function mergeNames(existing: Entrant[], names: string[]): MergeResult {
 /** Ranks named teams with valid times, fastest first; ties keep entry order. */
 export function seedTeams(entrants: Entrant[]): SeededTeam[] {
   return entrants
-    .map((entrant, order) => ({ entrant, order, timeMs: parseTime(entrant.timeText) }))
+    .map((entrant, order) => ({ entrant, order, timeMs: timeFromParts(entrant) }))
     .filter((row): row is typeof row & { timeMs: number } => row.timeMs !== null && !!row.entrant.name.trim())
     .sort((x, y) => x.timeMs - y.timeMs || x.order - y.order)
     .map((row, i) => ({ id: row.entrant.id, name: row.entrant.name.trim(), timeMs: row.timeMs, seed: i + 1 }));
@@ -68,7 +70,7 @@ export function validateEntrants(entrants: Entrant[]): string[] {
   const dupes = [...counts.values()].filter((c) => c.count > 1).map((c) => c.name);
   if (dupes.length) problems.push(`Duplicate names: ${dupes.join(', ')}.`);
 
-  const untimed = entrants.filter((e) => parseTime(e.timeText) === null).length;
+  const untimed = entrants.filter((e) => timeFromParts(e) === null).length;
   if (untimed) problems.push(`${untimed} ${untimed === 1 ? 'team needs' : 'teams need'} a valid time.`);
 
   if (entrants.length > MAX_TEAMS) problems.push(`Remove teams to get down to ${MAX_TEAMS}.`);

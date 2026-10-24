@@ -3,7 +3,7 @@ For competitions; Web-based Application to auto-generate brackets based on time 
 
 ## What it does
 - Enter up to 50 teams: upload an Excel/CSV sheet (team names in the first column) or type them in.
-- Enter each team's time-trial result (`m:ss.xx` or plain seconds). The fastest time is seed 1.
+- Enter each team's time-trial result in minute, second and millisecond boxes. Typing `:` or `.` moves to the next box, so `1:23.450` can be typed straight through; Enter jumps to the next team. The fastest time is seed 1.
 - Generate a single-elimination bracket. When the team count isn't a power of 2, the top seeds get byes (50 teams → 64 slots, 14 byes).
 - Click the winner of each race to move them on. Click a different team to correct a result, or the same team again to undo it; later rounds that depended on it are cleared.
 - The two semifinal losers race for third place, shown under the final.
@@ -15,7 +15,7 @@ Press **Present** (or `F`) on the Standings, Bracket or Podium view for a fullsc
 
 - `←` / `→` hide or show early rounds, so the remaining rounds get bigger.
 - `Esc` exits.
-- Hover the bottom-right corner for on-screen controls.
+- Controls in the bottom-right corner switch views and **Exit present mode**.
 
 ## Design
 Follows the Neobotics website's design standards (`src/lib/nb-tokens.ts` on neobotics-website):
