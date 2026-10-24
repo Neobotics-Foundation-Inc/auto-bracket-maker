@@ -1,3 +1,4 @@
+import { withThirdPlace } from './bracket';
 import type { AppState } from './types';
 
 const KEY = 'auto-bracket-maker:v1';
@@ -14,7 +15,10 @@ export const initialState: AppState = {
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...initialState, ...(JSON.parse(raw) as Partial<AppState>) };
+    if (raw) {
+      const state: AppState = { ...initialState, ...(JSON.parse(raw) as Partial<AppState>) };
+      return { ...state, bracket: state.bracket && withThirdPlace(state.bracket) };
+    }
   } catch {
     // Storage blocked or corrupt: start fresh.
   }

@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BracketView } from './components/BracketView';
+import { PodiumView } from './components/PodiumView';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
 import { advanceWinner, buildBracket, isByeMatch, progress, roundName } from './lib/bracket';
 import { seedTeams } from './lib/entrants';
 import { initialState, loadState, saveState } from './lib/storage';
 import type { AppState, SeededTeam, View } from './lib/types';
+
+const PRESENT_VIEWS: { view: View; label: string }[] = [
+  { view: 'standings', label: 'Standings' },
+  { view: 'bracket', label: 'Bracket' },
+  { view: 'podium', label: 'Podium' },
+];
 
 const signature = (teams: SeededTeam[]) => JSON.stringify(teams.map((t) => [t.id, t.name, t.timeMs]));
 
@@ -137,6 +144,9 @@ export default function App() {
             <button className={view === 'bracket' ? 'active' : ''} disabled={!bracket} onClick={() => setView('bracket')}>
               Bracket
             </button>
+            <button className={view === 'podium' ? 'active' : ''} disabled={!bracket} onClick={() => setView('podium')}>
+              Podium
+            </button>
           </nav>
           <div className="actions">
             <button
@@ -171,6 +181,7 @@ export default function App() {
           <h1>{event.title || 'Tournament Bracket'}</h1>
           {event.subtitle && <p>{event.subtitle}</p>}
           {view === 'standings' && <p className="event-header__tag">Time-trial standings</p>}
+          {view === 'podium' && <p className="event-header__tag">Podium</p>}
         </div>
       )}
 
@@ -219,6 +230,12 @@ export default function App() {
         </main>
       )}
 
+      {view === 'podium' && bracket && (
+        <main className="page page--stage">
+          <PodiumView bracket={bracket} />
+        </main>
+      )}
+
       {present && (
         <div className="present-controls">
           {view === 'bracket' && bracket && (
@@ -237,11 +254,12 @@ export default function App() {
               </button>
             </>
           )}
-          {bracket && (
-            <button className="btn" onClick={() => setView(view === 'bracket' ? 'standings' : 'bracket')}>
-              {view === 'bracket' ? 'Standings' : 'Bracket'}
-            </button>
-          )}
+          {bracket &&
+            PRESENT_VIEWS.filter((v) => v.view !== view).map((v) => (
+              <button key={v.view} className="btn" onClick={() => setView(v.view)}>
+                {v.label}
+              </button>
+            ))}
           <button className="btn" onClick={exitPresent} title="Exit (Esc)">
             Exit
           </button>

@@ -6,10 +6,12 @@ For competitions; Web-based Application to auto-generate brackets based on time 
 - Enter each team's time-trial result (`m:ss.xx` or plain seconds). The fastest time is seed 1.
 - Generate a single-elimination bracket. When the team count isn't a power of 2, the top seeds get byes (50 teams → 64 slots, 14 byes).
 - Click the winner of each race to move them on. Click a different team to correct a result, or the same team again to undo it; later rounds that depended on it are cleared.
+- The two semifinal losers race for third place, shown under the final.
+- The **Podium** tab shows 1st (final winner), 2nd (final runner-up) and 3rd (third-place race winner).
 - Everything is saved in the browser, so a refresh doesn't lose the bracket.
 
 ## Presenting
-Press **Present** (or `F`) on the Standings or Bracket view for a fullscreen, projector-friendly display with editing controls hidden. The bracket splits into two halves facing a central final and scales to fit the screen.
+Press **Present** (or `F`) on the Standings, Bracket or Podium view for a fullscreen, projector-friendly display with editing controls hidden. The bracket splits into two halves facing a central final and scales to fit the screen.
 
 - `←` / `→` hide or show early rounds, so the remaining rounds get bigger.
 - `Esc` exits.

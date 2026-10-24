@@ -726,36 +726,58 @@ button.team:disabled {
   }
 }
 
-.champion {
+/* A smaller label above the third-place race. */
+.round-header--sub {
+  font-size: 13px;
+}
+
+/* ---------- Podium ---------- */
+
+.podium-stage {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 24px;
+  padding: 0 24px 16px;
+}
+
+/* The base the steps stand on. */
+.podium-stage::after {
+  content: '';
   position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 16px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border-top: 2px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.podium-place {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  min-width: 0;
+}
+
+.podium-place__team {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 12px 16px;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 96px;
+  padding: 0 8px;
   text-align: center;
-  border-radius: 14px;
-  border: 2px solid var(--accent);
-  background: linear-gradient(160deg, var(--accent-soft), var(--surface) 70%);
-  box-shadow: 0 0 0 6px var(--accent-soft), var(--shadow-accent);
-  animation: champion-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+  animation: podium-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.3);
 }
 
-.champion__label {
-  font-family: var(--font-heading);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-.champion__label::before {
-  content: '🏆 ';
-}
-
-.champion__name {
+.podium-place__name {
   font-family: var(--font-heading);
   font-size: 30px;
   font-weight: 700;
@@ -768,15 +790,77 @@ button.team:disabled {
   overflow: hidden;
 }
 
-.champion__meta {
-  font-size: 14px;
+.podium-place--1 .podium-place__name {
+  font-size: 38px;
+}
+
+.podium-place__meta {
+  font-size: 16px;
   color: var(--muted);
 }
 
-@keyframes champion-in {
+.podium-place__pending {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.podium-place__step {
+  display: flex;
+  justify-content: center;
+  padding-top: 22px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.podium-place--1 .podium-place__step {
+  height: 260px;
+  border: 2px solid var(--accent);
+  border-bottom: 0;
+  background: linear-gradient(180deg, var(--accent-soft), var(--surface) 80%);
+  box-shadow: 0 0 0 6px var(--accent-soft), var(--shadow-accent);
+}
+
+.podium-place--2 .podium-place__step {
+  height: 190px;
+}
+
+.podium-place--3 .podium-place__step {
+  height: 140px;
+}
+
+.podium-place__label {
+  font-family: var(--font-heading);
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.podium-place--1 .podium-place__label {
+  font-size: 64px;
+  color: var(--accent);
+}
+
+.podium-place--pending .podium-place__step {
+  opacity: 0.6;
+}
+
+@keyframes podium-in {
   from {
     opacity: 0;
-    transform: scale(0.85);
+    transform: translateY(12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .podium-place__team {
+    animation: none;
   }
 }
 
@@ -926,7 +1010,7 @@ button.team:disabled {
 
 .app--world .match,
 .app--world .standings table,
-.app--world .champion,
+.app--world .podium-place__step,
 .app--world .present-controls {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -942,7 +1026,7 @@ button.team:disabled {
 .app--world .round-header,
 .app--world .team,
 .app--world .toolbar,
-.app--world .champion {
+.app--world .podium-stage {
   text-shadow: 0 1px 3px rgb(0 0 0 / 0.5), 0 1px 14px rgb(0 0 0 / 0.75);
 }
 
@@ -950,8 +1034,8 @@ button.team:disabled {
   color: rgb(255 255 255 / 0.85);
 }
 
-.app--world .champion {
-  background: linear-gradient(160deg, rgb(255 0 51 / 0.28), rgb(0 0 0 / 0.55) 70%);
+.app--world .podium-place--1 .podium-place__step {
+  background: linear-gradient(180deg, rgb(255 0 51 / 0.32), rgb(0 0 0 / 0.55) 80%);
 }
 
 .app--world input,
