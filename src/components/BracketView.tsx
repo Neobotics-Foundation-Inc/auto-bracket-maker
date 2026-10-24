@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CARD_W, HEADER_H, layoutBracket, layoutCombined, layoutLosers, showsBothBrackets } from '../lib/layout';
+import { CARD_W, HEADER_H, layoutBracket, layoutCombined, layoutGrandFinal, layoutLosers, showsBothBrackets } from '../lib/layout';
 import type { Bracket, BracketPane } from '../lib/types';
 import { FitToScreen } from './FitToScreen';
 import { MatchCard } from './MatchCard';
@@ -16,11 +16,13 @@ export function BracketView({ bracket, pane, firstRound, present, onPick }: Prop
   const layout = useMemo(() => {
     if (showsBothBrackets(bracket)) return layoutCombined(bracket);
     if (pane === 'losers' && bracket.losers.length > 0) return layoutLosers(bracket);
+    if (pane === 'grand' && bracket.grandFinal) return layoutGrandFinal(bracket);
     return layoutBracket(bracket, { mirrored: present, firstRound });
   }, [bracket, pane, present, firstRound]);
 
   return (
-    <FitToScreen width={layout.width} height={layout.height} fit={present}>
+    // The grand final is a single small picture, so it's always scaled to fill the space.
+    <FitToScreen width={layout.width} height={layout.height} fit={present || pane === 'grand'}>
       <div className="stage" style={{ width: layout.width, height: layout.height }}>
         {layout.headers.map((h, i) =>
           h.section ? (

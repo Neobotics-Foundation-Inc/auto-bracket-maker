@@ -7,7 +7,7 @@ For competitions; Web-based Application to auto-generate brackets based on time 
 - Generate the bracket. When the team count isn't a power of 2, the top seeds get byes (50 teams → 64 slots, 14 byes).
 - Choose how third place is decided on the setup page:
   - **Third-place race:** the two semifinal losers race once more, shown under the final.
-  - **Losers bracket:** double elimination. A team is out after two losses; losers drop into a losers bracket whose winner meets the winners-bracket champion in a single grand final. With up to 16 teams both brackets are shown on one screen; with more, switch between them above the bracket.
+  - **Losers bracket:** double elimination. A team is out after two losses; losers drop into a losers bracket whose winner meets the winners-bracket champion in a single grand final. With up to 16 teams both brackets are shown on one screen with the grand final between them; with more, tabs above the bracket switch between the winners bracket, the losers bracket and the grand final.
   - **Time-trial tiebreak:** no extra race; the semifinal loser with the faster time trial takes 3rd.
 - Click the winner of each race to move them on. Click a different team to correct a result, or the same team again to undo it; later results that depended on it are cleared.
 - The **Podium** tab shows 1st, 2nd and 3rd.

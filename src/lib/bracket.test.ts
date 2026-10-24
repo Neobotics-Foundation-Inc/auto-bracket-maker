@@ -13,7 +13,7 @@ import {
   seedOrder,
 } from './bracket';
 import { seedTeams } from './entrants';
-import { layoutBracket, layoutCombined, layoutLosers, showsBothBrackets } from './layout';
+import { layoutBracket, layoutCombined, layoutGrandFinal, layoutLosers, showsBothBrackets } from './layout';
 import { BYE, type Bracket, type SeededTeam } from './types';
 
 const makeTeams = (n: number): SeededTeam[] =>
@@ -299,20 +299,34 @@ describe('layout', () => {
     expect(layout.cards).toHaveLength(8);
   });
 
-  it('puts the third-place race or grand final under the final without overlapping it', () => {
-    for (const format of ['race', 'double'] as const) {
-      for (const teams of [3, 4, 8, 50]) {
-        for (const mirrored of [false, true]) {
-          const b = buildBracket(makeTeams(teams), format);
-          const layout = layoutBracket(b, { mirrored, firstRound: 0 });
-          const final = layout.cards.find((c) => c.match.id === b.rounds[b.rounds.length - 1][0].id)!;
-          const extra = layout.cards.find((c) => c.match.id === (format === 'race' ? 'third' : 'grand'))!;
-          expect(extra.x).toBe(final.x);
-          expect(extra.y).toBeGreaterThan(final.y + 76);
-          expect(extra.y + 76).toBeLessThanOrEqual(layout.height);
-        }
+  it('puts the third-place race under the final without overlapping it', () => {
+    for (const teams of [3, 4, 8, 50]) {
+      for (const mirrored of [false, true]) {
+        const b = buildBracket(makeTeams(teams), 'race');
+        const layout = layoutBracket(b, { mirrored, firstRound: 0 });
+        const final = layout.cards.find((c) => c.match.id === b.rounds[b.rounds.length - 1][0].id)!;
+        const third = layout.cards.find((c) => c.match.id === 'third')!;
+        expect(third.x).toBe(final.x);
+        expect(third.y).toBeGreaterThan(final.y + 76);
+        expect(third.y + 76).toBeLessThanOrEqual(layout.height);
       }
     }
+  });
+
+  it('keeps the grand final out of the winners and losers views, on a tab of its own', () => {
+    const b = buildBracket(makeTeams(50), 'double');
+    expect(layoutBracket(b, { mirrored: true, firstRound: 0 }).cards.some((c) => c.match.id === 'grand')).toBe(false);
+    expect(layoutLosers(b).cards.some((c) => c.match.id === 'grand')).toBe(false);
+
+    const layout = layoutGrandFinal(b);
+    expect(layout.cards.map((c) => c.match.id)).toEqual(['r5m0', 'l9m0', 'grand']);
+    expect(layout.headers.map((h) => h.label)).toEqual(['Winners final', 'Losers final', 'Grand final']);
+    const [winnersFinal, losersFinal, grand] = layout.cards;
+    // The grand final sits to the right, level with the gap between the two finals feeding it.
+    expect(grand.x).toBeGreaterThan(winnersFinal.x + 232);
+    expect(grand.y).toBeGreaterThan(winnersFinal.y);
+    expect(grand.y).toBeLessThan(losersFinal.y);
+    expect(layout.paths).toHaveLength(2);
   });
 
   it('shows both brackets together up to 16 teams', () => {
@@ -338,8 +352,8 @@ describe('layout', () => {
   it('lays out the losers bracket without overlapping cards', () => {
     const b = buildBracket(makeTeams(50), 'double');
     const layout = layoutLosers(b);
-    expect(layout.cards).toHaveLength(b.losers.flat().length + 1);
-    expect(layout.headers.map((h) => h.label).slice(-2)).toEqual(['Losers final', 'Grand final']);
+    expect(layout.cards).toHaveLength(b.losers.flat().length);
+    expect(layout.headers.map((h) => h.label).at(-1)).toBe('Losers final');
     const boxes = layout.cards.map((c) => `${c.x}:${Math.round(c.y)}`);
     expect(new Set(boxes).size).toBe(boxes.length);
   });

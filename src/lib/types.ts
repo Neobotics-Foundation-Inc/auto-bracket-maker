@@ -80,8 +80,8 @@ export interface EventInfo {
 
 export type Theme = 'dark' | 'light';
 export type View = 'setup' | 'standings' | 'bracket' | 'podium';
-/** Which half of a double-elimination bracket the bracket view shows. */
-export type BracketPane = 'winners' | 'losers';
+/** Which part of a double-elimination bracket the bracket view shows, when they don't fit together. */
+export type BracketPane = 'winners' | 'losers' | 'grand';
 
 export interface AppState {
   event: EventInfo;

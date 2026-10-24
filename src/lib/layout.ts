@@ -46,17 +46,14 @@ const elbow = (fromX: number, fromY: number, toX: number, toY: number) => {
  * Positions the main (winners) bracket's cards and connector lines.
  * Linear: rounds run left to right with the final last.
  * Mirrored: two halves face a final in the centre, which is half as tall for projectors.
- * The third-place race or grand final sits under the final.
+ * The third-place race, if any, sits under the final.
  */
-export function layoutBracket(
-  bracket: Bracket,
-  opts: { mirrored: boolean; firstRound: number; withExtra?: boolean },
-): Layout {
+export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; firstRound: number }): Layout {
   const { rounds } = bracket;
   const finalRound = rounds.length - 1;
   const first = Math.min(Math.max(opts.firstRound, 0), finalRound);
   const mirrored = opts.mirrored && first < finalRound;
-  const extra = opts.withExtra === false ? null : (bracket.thirdPlace ?? bracket.grandFinal);
+  const extra = bracket.thirdPlace;
 
   // Columns on one side, outermost first. In linear mode the final is the last column.
   const sideRounds: number[] = [];
@@ -120,11 +117,10 @@ export function layoutBracket(
 /**
  * Positions the losers bracket, left to right. A round the same size as the one before
  * takes in teams dropping from the winners bracket (one line in per match); a round half
- * the size pairs off the previous winners (two lines in). The grand final comes last
- * unless `withGrand` is false.
+ * the size pairs off the previous winners (two lines in).
  */
-export function layoutLosers(bracket: Bracket, { withGrand = true } = {}): Layout {
-  const columns = withGrand && bracket.grandFinal ? [...bracket.losers, [bracket.grandFinal]] : bracket.losers;
+export function layoutLosers(bracket: Bracket): Layout {
+  const columns = bracket.losers;
   const step = CARD_W + COL_GAP;
   const bodyH = Math.max(...columns.map((c) => c.length)) * (CARD_H + ROW_GAP);
   const width = columns.length * CARD_W + (columns.length - 1) * COL_GAP;
@@ -183,11 +179,11 @@ function shift(layout: Layout, dy: number): Layout {
  * from the winners final above and the losers final below.
  */
 export function layoutCombined(bracket: Bracket): Layout {
-  const winners = shift(layoutBracket(bracket, { mirrored: false, firstRound: 0, withExtra: false }), SECTION_H);
+  const winners = shift(layoutBracket(bracket, { mirrored: false, firstRound: 0 }), SECTION_H);
   const grandLabelY = SECTION_H + winners.height + GRAND_PAD;
   const grandY = grandLabelY + EXTRA_LABEL_H;
   const losersTop = grandY + CARD_H + GRAND_PAD;
-  const losers = shift(layoutLosers(bracket, { withGrand: false }), losersTop + SECTION_H);
+  const losers = shift(layoutLosers(bracket), losersTop + SECTION_H);
   const grandX = Math.max(winners.width, losers.width) + COL_GAP;
   const grandCy = grandY + CARD_H / 2;
 
@@ -209,5 +205,39 @@ export function layoutCombined(bracket: Bracket): Layout {
       { label: 'Losers bracket', x: 0, y: losersTop, section: true },
       ...losers.headers,
     ],
+  };
+}
+
+const FINALS_GAP = 56;
+
+/**
+ * The grand final on its own: the winners final above and the losers final below on the
+ * left, both feeding the grand final on the right.
+ */
+export function layoutGrandFinal(bracket: Bracket): Layout {
+  const winnersFinal = bracket.rounds[bracket.rounds.length - 1][0];
+  const losersFinal = bracket.losers[bracket.losers.length - 1][0];
+  const topY = EXTRA_LABEL_H;
+  const bottomY = topY + CARD_H + FINALS_GAP + EXTRA_LABEL_H;
+  const grandX = CARD_W + 2 * COL_GAP;
+  const grandY = (topY + bottomY) / 2;
+  const grandCy = grandY + CARD_H / 2;
+  const label = (match: Match, x: number, y: number): Header => ({
+    label: sectionRoundName(bracket, match.section, match.round),
+    x,
+    y: y - EXTRA_LABEL_H,
+    sub: true,
+  });
+
+  return {
+    width: grandX + CARD_W,
+    height: bottomY + CARD_H,
+    cards: [
+      { match: winnersFinal, x: 0, y: topY },
+      { match: losersFinal, x: 0, y: bottomY },
+      { match: bracket.grandFinal!, x: grandX, y: grandY },
+    ],
+    paths: [topY, bottomY].map((y) => `M${CARD_W} ${y + CARD_H / 2}H${CARD_W + COL_GAP}V${grandCy}H${grandX}`),
+    headers: [label(winnersFinal, 0, topY), label(losersFinal, 0, bottomY), label(bracket.grandFinal!, grandX, grandY)],
   };
 }

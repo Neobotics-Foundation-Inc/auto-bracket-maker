@@ -9,12 +9,18 @@ import { advanceWinner, buildBracket, progress, roundName } from './lib/bracket'
 import { seedTeams } from './lib/entrants';
 import { showsBothBrackets } from './lib/layout';
 import { initialState, loadState, saveState } from './lib/storage';
-import type { AppState, SeededTeam, View } from './lib/types';
+import type { AppState, BracketPane, SeededTeam, View } from './lib/types';
 
 const PRESENT_VIEWS: { view: View; label: string }[] = [
   { view: 'standings', label: 'Standings' },
   { view: 'bracket', label: 'Bracket' },
   { view: 'podium', label: 'Podium' },
+];
+
+const PANES: { pane: BracketPane; label: string }[] = [
+  { pane: 'winners', label: 'Winners bracket' },
+  { pane: 'losers', label: 'Losers bracket' },
+  { pane: 'grand', label: 'Grand final' },
 ];
 
 const signature = (teams: SeededTeam[]) => JSON.stringify(teams.map((t) => [t.id, t.name, t.timeMs]));
@@ -124,9 +130,9 @@ export default function App() {
   const showEventHeader = view !== 'setup';
   const paneSwitch = (
     <div className="segmented" role="group" aria-label="Bracket">
-      {(['winners', 'losers'] as const).map((p) => (
+      {PANES.map(({ pane: p, label }) => (
         <button key={p} className={pane === p ? 'active' : ''} aria-pressed={pane === p} onClick={() => patch({ pane: p })}>
-          {p === 'winners' ? 'Winners bracket' : 'Losers bracket'}
+          {label}
         </button>
       ))}
     </div>
@@ -211,7 +217,7 @@ export default function App() {
           {view === 'standings' && <p className="event-header__tag">Time-trial standings</p>}
           {view === 'podium' && <p className="event-header__tag">Podium</p>}
           {view === 'bracket' && split && (
-            <p className="event-header__tag">{pane === 'losers' ? 'Losers bracket' : 'Winners bracket'}</p>
+            <p className="event-header__tag">{PANES.find((p) => p.pane === pane)!.label}</p>
           )}
         </div>
       )}
