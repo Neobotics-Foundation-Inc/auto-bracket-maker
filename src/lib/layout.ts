@@ -22,6 +22,10 @@ export interface CardBox extends Box {
 }
 export interface Header extends Box {
   label: string;
+  /** A title over a whole bracket ("Winners bracket") rather than a round. */
+  section?: boolean;
+  /** A small label over a single race below the final ("Third place"). */
+  sub?: boolean;
 }
 export interface Layout {
   width: number;
@@ -44,12 +48,15 @@ const elbow = (fromX: number, fromY: number, toX: number, toY: number) => {
  * Mirrored: two halves face a final in the centre, which is half as tall for projectors.
  * The third-place race or grand final sits under the final.
  */
-export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; firstRound: number }): Layout {
+export function layoutBracket(
+  bracket: Bracket,
+  opts: { mirrored: boolean; firstRound: number; withExtra?: boolean },
+): Layout {
   const { rounds } = bracket;
   const finalRound = rounds.length - 1;
   const first = Math.min(Math.max(opts.firstRound, 0), finalRound);
   const mirrored = opts.mirrored && first < finalRound;
-  const extra = bracket.thirdPlace ?? bracket.grandFinal;
+  const extra = opts.withExtra === false ? null : (bracket.thirdPlace ?? bracket.grandFinal);
 
   // Columns on one side, outermost first. In linear mode the final is the last column.
   const sideRounds: number[] = [];
@@ -103,7 +110,7 @@ export function layoutBracket(bracket: Bracket, opts: { mirrored: boolean; first
 
   if (extra) {
     const y = finalY + CARD_H + EXTRA_GAP;
-    headers.push({ label: sectionRoundName(bracket, extra.section, 0), x: finalX, y: y - EXTRA_LABEL_H });
+    headers.push({ label: sectionRoundName(bracket, extra.section, 0), x: finalX, y: y - EXTRA_LABEL_H, sub: true });
     cards.push({ match: extra, x: finalX, y });
   }
 
@@ -146,4 +153,53 @@ export function layoutLosers(bracket: Bracket): Layout {
   });
 
   return { width, height: HEADER_H + bodyH, cards, paths, headers };
+}
+
+/** Double-elimination brackets up to this size fit both halves on one screen. */
+const COMBINED_MAX_SIZE = 16;
+const SECTION_H = 40;
+const SECTION_GAP = 48;
+
+export const showsBothBrackets = (bracket: Bracket) =>
+  bracket.losers.length > 0 && bracket.size <= COMBINED_MAX_SIZE;
+
+const shiftPath = (d: string, dy: number) =>
+  d.replace(/M(\S+) (\S+?)(?=[HV])/, (_, x, y) => `M${x} ${Number(y) + dy}`).replace(/V([\d.]+)/g, (_, y) => `V${Number(y) + dy}`);
+
+function shift(layout: Layout, dy: number): Layout {
+  return {
+    ...layout,
+    cards: layout.cards.map((c) => ({ ...c, y: c.y + dy })),
+    headers: layout.headers.map((h) => ({ ...h, y: h.y + dy })),
+    paths: layout.paths.map((d) => shiftPath(d, dy)),
+  };
+}
+
+/**
+ * Winners bracket on top and losers bracket underneath, for smaller double-elimination
+ * events. The grand final ends the losers row, with a line in from the winners final.
+ */
+export function layoutCombined(bracket: Bracket): Layout {
+  const winners = shift(layoutBracket(bracket, { mirrored: false, firstRound: 0, withExtra: false }), SECTION_H);
+  const losersTop = winners.height + SECTION_H + SECTION_GAP;
+  const losers = shift(layoutLosers(bracket), losersTop + SECTION_H);
+
+  const final = winners.cards.find((c) => c.match.section === 'main' && c.match.round === bracket.rounds.length - 1)!;
+  const grand = losers.cards.find((c) => c.match.section === 'grand')!;
+  // Around the right of the grand final, so the line doesn't cross the losers bracket's headings.
+  const laneX = grand.x + CARD_W + COL_GAP / 2;
+  const toFinal = `M${final.x + CARD_W} ${final.y + CARD_H / 2}H${laneX}V${grand.y + CARD_H / 2}H${grand.x + CARD_W}`;
+
+  return {
+    width: Math.max(winners.width, losers.width) + COL_GAP / 2,
+    height: losersTop + SECTION_H + losers.height,
+    cards: [...winners.cards, ...losers.cards],
+    paths: [...winners.paths, ...losers.paths, toFinal],
+    headers: [
+      { label: 'Winners bracket', x: 0, y: 0, section: true },
+      ...winners.headers,
+      { label: 'Losers bracket', x: 0, y: losersTop, section: true },
+      ...losers.headers,
+    ],
+  };
 }

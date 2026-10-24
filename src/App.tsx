@@ -6,6 +6,7 @@ import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
 import { advanceWinner, buildBracket, progress, roundName } from './lib/bracket';
 import { seedTeams } from './lib/entrants';
+import { showsBothBrackets } from './lib/layout';
 import { initialState, loadState, saveState } from './lib/storage';
 import type { AppState, SeededTeam, View } from './lib/types';
 
@@ -42,7 +43,11 @@ export default function App() {
   const standings = bracketTeams ?? seeded;
   const roundCount = bracket?.rounds.length ?? 0;
   const hasLosers = !!bracket?.losers.length;
-  const pane = hasLosers ? state.pane : 'winners';
+  // Smaller double-elimination brackets show both halves together; larger ones switch between them.
+  const combined = !!bracket && showsBothBrackets(bracket);
+  const split = hasLosers && !combined;
+  const pane = split ? state.pane : 'winners';
+  const canHideRounds = !combined && pane === 'winners';
 
   const setView = (next: View) => patch({ view: next });
   const shiftRound = useCallback(
@@ -103,9 +108,9 @@ export default function App() {
       if (canPresent || present) togglePresent();
     } else if (e.key === 'Escape' && present) {
       exitPresent();
-    } else if (view === 'bracket' && pane === 'winners' && e.key === 'ArrowRight') {
+    } else if (view === 'bracket' && canHideRounds && e.key === 'ArrowRight') {
       shiftRound(1);
-    } else if (view === 'bracket' && pane === 'winners' && e.key === 'ArrowLeft') {
+    } else if (view === 'bracket' && canHideRounds && e.key === 'ArrowLeft') {
       shiftRound(-1);
     }
   };
@@ -210,7 +215,7 @@ export default function App() {
           {event.subtitle && <p>{event.subtitle}</p>}
           {view === 'standings' && <p className="event-header__tag">Time-trial standings</p>}
           {view === 'podium' && <p className="event-header__tag">Podium</p>}
-          {view === 'bracket' && hasLosers && (
+          {view === 'bracket' && split && (
             <p className="event-header__tag">{pane === 'losers' ? 'Losers bracket' : 'Winners bracket'}</p>
           )}
         </div>
@@ -226,8 +231,8 @@ export default function App() {
         <main className="page page--stage">
           {!present && (
             <div className="toolbar">
-              {hasLosers && paneSwitch}
-              {pane === 'winners' && (
+              {split && paneSwitch}
+              {canHideRounds && (
                 <label>
                   <span>Show from</span>
                   <select value={firstRound} onChange={(e) => patch({ firstRound: Number(e.target.value) })}>
@@ -273,8 +278,8 @@ export default function App() {
 
       {present && (
         <div className="present-controls">
-          {view === 'bracket' && hasLosers && paneSwitch}
-          {view === 'bracket' && bracket && pane === 'winners' && (
+          {view === 'bracket' && split && paneSwitch}
+          {view === 'bracket' && bracket && canHideRounds && (
             <>
               <button className="btn" onClick={() => shiftRound(-1)} disabled={firstRound === 0} title="Show earlier rounds (←)">
                 ◀

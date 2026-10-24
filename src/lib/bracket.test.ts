@@ -13,7 +13,7 @@ import {
   seedOrder,
 } from './bracket';
 import { seedTeams } from './entrants';
-import { layoutBracket, layoutLosers } from './layout';
+import { layoutBracket, layoutCombined, layoutLosers, showsBothBrackets } from './layout';
 import { BYE, type Bracket, type SeededTeam } from './types';
 
 const makeTeams = (n: number): SeededTeam[] =>
@@ -312,6 +312,24 @@ describe('layout', () => {
           expect(extra.y + 76).toBeLessThanOrEqual(layout.height);
         }
       }
+    }
+  });
+
+  it('shows both brackets together up to 16 teams', () => {
+    expect(showsBothBrackets(buildBracket(makeTeams(16), 'double'))).toBe(true);
+    expect(showsBothBrackets(buildBracket(makeTeams(17), 'double'))).toBe(false);
+    expect(showsBothBrackets(buildBracket(makeTeams(8), 'race'))).toBe(false);
+
+    for (const teams of [3, 8, 16]) {
+      const b = buildBracket(makeTeams(teams), 'double');
+      const layout = layoutCombined(b);
+      // Every race once: the grand final only in the losers row.
+      expect(layout.cards).toHaveLength(allMatches(b).length);
+      const winnersBottom = Math.max(...layout.cards.filter((c) => c.match.section === 'main').map((c) => c.y + 76));
+      const losersTop = Math.min(...layout.cards.filter((c) => c.match.section !== 'main').map((c) => c.y));
+      expect(losersTop).toBeGreaterThan(winnersBottom);
+      for (const c of layout.cards) expect(c.x + 232).toBeLessThanOrEqual(layout.width);
+      expect(layout.headers.filter((h) => h.section).map((h) => h.label)).toEqual(['Winners bracket', 'Losers bracket']);
     }
   });
 
