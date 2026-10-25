@@ -116,7 +116,7 @@ export default function App() {
     }
   }, [colors]);
   useEffect(() => {
-    document.title = event.title ? `${event.title} · Auto Bracket Maker` : 'Auto Bracket Maker';
+    document.title = event.title ? `${event.title} · Auto Bracket Generator` : 'Auto Bracket Generator';
   }, [event.title]);
 
   const seeded = useMemo(() => seedTeams(entrants), [entrants]);
@@ -284,7 +284,7 @@ export default function App() {
                 alt="Neobotics Foundation Inc."
               />
             )}
-            <span>Bracket Maker</span>
+            <span>Bracket Generator</span>
           </div>
           <nav className="tabs" aria-label="Views">
             <button className={view === 'customize' ? 'active' : ''} onClick={() => setView('customize')}>
