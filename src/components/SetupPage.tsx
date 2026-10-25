@@ -1,5 +1,6 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react';
-import { EMPTY_TIME, MAX_TEAMS, mergeNames, newId, validateEntrants } from '../lib/entrants';
+import { downloadFile } from '../lib/download';
+import { EMPTY_TIME, isCleared, MAX_TEAMS, mergeRows, newId, validateEntrants } from '../lib/entrants';
 import type { Entrant, EventInfo, ThirdPlaceFormat } from '../lib/types';
 import type { ConfirmRequest } from './ConfirmDialog';
 import { TeamTable } from './TeamTable';
@@ -16,6 +17,9 @@ interface Props {
   onConfirm: (request: ConfirmRequest) => void;
   format: ThirdPlaceFormat;
   onFormatChange: (format: ThirdPlaceFormat) => void;
+  /** Eligibility checks: only teams checked in, inspected and through the obstacle test are seeded. */
+  requireChecks: boolean;
+  onRequireChecksChange: (on: boolean) => void;
   /** Panels after the teams, such as the event file and backups. */
   children?: ReactNode;
 }
@@ -46,27 +50,44 @@ export function SetupPage(props: Props) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [dragging, setDragging] = useState(false);
-  const problems = validateEntrants(entrants);
+  const problems = validateEntrants(entrants, props.requireChecks);
+  const cleared = entrants.filter(isCleared).length;
 
   async function importFile(file: File | undefined) {
     if (!file) return;
     try {
       // The spreadsheet parser is large, so it only loads when a file is imported.
-      const { readTeamNames } = await import('../lib/excel');
-      const names = await readTeamNames(file);
-      if (names.length === 0) {
+      const { readTeamRows } = await import('../lib/excel');
+      const rows = await readTeamRows(file);
+      if (rows.length === 0) {
         setNotice({ kind: 'error', text: `No team names found in ${file.name}.` });
         return;
       }
-      const result = mergeNames(entrants, names);
+      const result = mergeRows(entrants, rows);
       onEntrantsChange(result.entrants);
-      const parts = [`Added ${result.added} ${result.added === 1 ? 'team' : 'teams'} from ${file.name}.`];
+      const teams = (n: number) => `${n} ${n === 1 ? 'team' : 'teams'}`;
+      const parts = [`Added ${teams(result.added)} from ${file.name}.`];
+      if (result.updated) parts.push(`Updated ${teams(result.updated)} already listed.`);
       if (result.duplicates) parts.push(`Skipped ${result.duplicates} duplicate${result.duplicates === 1 ? '' : 's'}.`);
+      if (result.badTimes) {
+        parts.push(
+          result.badTimes === 1
+            ? '1 time couldn’t be read and was left blank.'
+            : `${result.badTimes} times couldn’t be read and were left blank.`,
+        );
+      }
       if (result.overflow) parts.push(`${result.overflow} left out: the limit is ${MAX_TEAMS} teams.`);
-      setNotice({ kind: result.overflow ? 'error' : 'info', text: parts.join(' ') });
+      setNotice({ kind: result.overflow || result.badTimes ? 'error' : 'info', text: parts.join(' ') });
+      // A sheet with check columns means the event is tracking them.
+      if (rows.some((r) => r.checks) && !props.requireChecks) props.onRequireChecksChange(true);
     } catch {
       setNotice({ kind: 'error', text: `Couldn't read ${file.name}. Use an .xlsx, .xls or .csv file.` });
     }
+  }
+
+  async function downloadTemplate() {
+    const { templateCsv } = await import('../lib/excel');
+    downloadFile('teams-template.csv', templateCsv(), 'text/csv');
   }
 
   function onDrop(e: DragEvent) {
@@ -149,6 +170,9 @@ export function SetupPage(props: Props) {
             <button className="btn" onClick={() => fileInput.current?.click()}>
               Upload spreadsheet
             </button>
+            <button className="btn btn-quiet" onClick={() => void downloadTemplate()}>
+              Download template
+            </button>
             <button className="btn" onClick={addTeam} disabled={entrants.length >= MAX_TEAMS}>
               Add team
             </button>
@@ -157,6 +181,22 @@ export function SetupPage(props: Props) {
             </button>
           </div>
         </div>
+
+        <label className="checks-toggle">
+          <input
+            type="checkbox"
+            checked={props.requireChecks}
+            onChange={(e) => props.onRequireChecksChange(e.target.checked)}
+          />
+          <span>
+            <strong>Eligibility checks</strong>
+            <span className="muted">
+              {props.requireChecks
+                ? ` Only teams checked in, inspected and through the obstacle test are seeded: ${cleared} of ${entrants.length} cleared.`
+                : ' Track check-in, inspection and the obstacle test for each team, and seed only the cleared ones.'}
+            </span>
+          </span>
+        </label>
 
         <input
           ref={fileInput}
@@ -178,12 +218,13 @@ export function SetupPage(props: Props) {
           onDrop={onDrop}
           onClick={() => fileInput.current?.click()}
         >
-          Drop an Excel or CSV file here. Team names are read from the first column; a header row like “Team” is
-          skipped.
+          Drop an Excel or CSV file here. With headers like the template’s (Team, Time trial, Checked in, Inspected,
+          Obstacle test), each column is read in; otherwise team names come from the first column. Teams already
+          listed get the sheet’s times and checks.
         </div>
         {notice && <p className={`notice notice--${notice.kind}`}>{notice.text}</p>}
 
-        <TeamTable entrants={entrants} onChange={onEntrantsChange} />
+        <TeamTable entrants={entrants} onChange={onEntrantsChange} requireChecks={props.requireChecks} />
       </section>
 
       {props.children}
@@ -200,7 +241,9 @@ export function SetupPage(props: Props) {
             <p className="ready">
               {bracketStale
                 ? 'Teams, times or format changed since the bracket was made. Generate again to update it.'
-                : 'All set. Fastest time is seed 1.'}
+                : props.requireChecks && cleared < entrants.length
+                  ? `All set: the ${cleared} cleared teams will be seeded, fastest first.`
+                  : 'All set. Fastest time is seed 1.'}
             </p>
           )}
         </div>

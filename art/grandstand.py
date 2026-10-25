@@ -582,7 +582,8 @@ def make_camera(name, loc, target, lens):
 
 
 desktop_cam = make_camera("CamDesktop", (-1.5, -16, 1.5), (5.5, 40, 4.2), 22)
-mobile_cam = make_camera("CamMobile", (1.5, -12, 1.6), (10.5, 30, 3.4), 19)
+# Phones: on the track's center line, looking straight down the straight, like the desktop view.
+mobile_cam = make_camera("CamMobile", (0, -16, 1.5), (0.5, 40, 4.2), 19)
 
 # ---------------------------------------------------------------- sky
 world = bpy.data.worlds.new("Day" if DAY else "Night")

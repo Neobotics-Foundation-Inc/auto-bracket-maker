@@ -24,6 +24,10 @@ export const initialState: AppState = {
   firstRound: 0,
   losersFirstRound: 0,
   timer: newTimer(),
+  requireChecks: false,
+  queueOrder: [],
+  // A five-minute heat (the Roboracer slot) plus a minute to change cars.
+  slotMs: 6 * 60 * 1000,
 };
 
 /** A saved state (from storage, a backup or an event file), brought up to date. */

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { shownSeeds } from '../lib/entrants';
 import { formatTime } from '../lib/time';
 import type { SeededTeam } from '../lib/types';
@@ -53,6 +53,19 @@ export function StandingsView({ teams, present }: Props) {
     (c) => c.length,
   );
   const leader = teams[0]?.timeMs ?? 0;
+  const times = useMemo(
+    () =>
+      new Map(
+        teams.map((t) => [
+          t.id,
+          { time: formatTime(t.timeMs), gap: (seeds.get(t.id) ?? t.seed) === 1 ? '–' : `+${formatTime(t.timeMs - leader)}` },
+        ]),
+      ),
+    [teams, seeds, leader],
+  );
+  // The longest time and gap, in characters: on phones the two columns are sized to fit them.
+  const widest = (key: 'time' | 'gap') => Math.max(1, ...[...times.values()].map((t) => t[key].length));
+  const style = { gap: COL_GAP, '--time-ch': widest('time'), '--gap-ch': widest('gap') } as CSSProperties;
 
   return (
     <FitToScreen
@@ -62,7 +75,7 @@ export function StandingsView({ teams, present }: Props) {
       maxScale={present ? PRESENT_MAX_SCALE : undefined}
       onBox={setBox}
     >
-      <div className="standings" style={{ gap: COL_GAP }}>
+      <div className="standings" style={style}>
         {columns.map((col, c) => (
           <div key={c} className="standings-card ring ring--slow" style={{ width: COL_W }}>
             <table>
@@ -77,6 +90,7 @@ export function StandingsView({ teams, present }: Props) {
               <tbody>
                 {col.map((t) => {
                   const seed = seeds.get(t.id) ?? t.seed;
+                  const { time, gap } = times.get(t.id)!;
                   return (
                     <tr key={t.id} style={{ height: ROW_H }} className={seed <= 3 ? `podium podium--${seed}` : ''}>
                       <td className="num">
@@ -85,8 +99,8 @@ export function StandingsView({ teams, present }: Props) {
                       <td className="name" title={t.name}>
                         {t.name}
                       </td>
-                      <td className="num mono">{formatTime(t.timeMs)}</td>
-                      <td className="num mono muted">{seed === 1 ? '–' : `+${formatTime(t.timeMs - leader)}`}</td>
+                      <td className="num mono">{time}</td>
+                      <td className="num mono muted">{gap}</td>
                     </tr>
                   );
                 })}

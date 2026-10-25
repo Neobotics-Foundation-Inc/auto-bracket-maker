@@ -11,10 +11,22 @@ export interface TimeParts {
   ms: string;
 }
 
+/**
+ * What a car must pass before it may race, under the Roboracer rules: arriving (check-in), the
+ * referees' hardware inspection, and the obstacle-avoidance test.
+ */
+export interface Checks {
+  checkedIn: boolean;
+  inspected: boolean;
+  obstacleTest: boolean;
+}
+
 /** A row on the setup page, as the user typed it. */
 export interface Entrant extends TimeParts {
   id: string;
   name: string;
+  /** Only used when eligibility checks are on; missing means nothing passed yet. */
+  checks?: Checks;
 }
 
 /** A team with a valid time-trial result and its resulting seed (1 = fastest). */
@@ -79,7 +91,8 @@ export interface EventInfo {
 }
 
 export type Theme = 'dark' | 'light';
-export type View = 'customize' | 'setup' | 'standings' | 'bracket' | 'podium';
+/** Spotlight (the current race, large) is shown in present mode only. */
+export type View = 'customize' | 'setup' | 'standings' | 'bracket' | 'podium' | 'spotlight';
 /** Which part of a double-elimination bracket the bracket view shows, when they don't fit together. */
 export type BracketPane = 'winners' | 'losers' | 'grand';
 
@@ -98,6 +111,12 @@ export interface AppState {
   losersFirstRound: number;
   /** The race countdown on the bracket view. */
   timer: RaceTimer;
+  /** Whether teams must be checked in, inspected and pass the obstacle test to be seeded. */
+  requireChecks: boolean;
+  /** Race ids in the order they're to be run, where the organizers have moved races. */
+  queueOrder: string[];
+  /** How long each race takes on the day, heat and changeover, for estimated times. */
+  slotMs: number;
 }
 
 /**

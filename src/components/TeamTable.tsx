@@ -1,11 +1,13 @@
 import { useMemo, type KeyboardEvent } from 'react';
-import { normalizeName, seedTeams, shownSeeds } from '../lib/entrants';
+import { isCleared, NO_CHECKS, normalizeName, seedTeams, shownSeeds } from '../lib/entrants';
 import { checkTimeParts, formatTime } from '../lib/time';
-import type { Entrant, TimeParts } from '../lib/types';
+import type { Checks, Entrant, TimeParts } from '../lib/types';
 
 interface Props {
   entrants: Entrant[];
   onChange: (entrants: Entrant[]) => void;
+  /** Shows each team's check-in, inspection and obstacle test, and seeds only cleared teams. */
+  requireChecks: boolean;
 }
 
 const TIME_FIELDS: { key: keyof TimeParts; label: string; maxLength: number }[] = [
@@ -34,8 +36,14 @@ function moveOnSeparator(input: HTMLInputElement) {
   inputs[inputs.indexOf(input) + 1]?.focus();
 }
 
-export function TeamTable({ entrants, onChange }: Props) {
-  const seeds = useMemo(() => shownSeeds(seedTeams(entrants)), [entrants]);
+const CHECKS: { key: keyof Checks; short: string; label: string }[] = [
+  { key: 'checkedIn', short: 'In', label: 'Checked in' },
+  { key: 'inspected', short: 'Insp.', label: 'Inspected' },
+  { key: 'obstacleTest', short: 'Obst.', label: 'Passed the obstacle test' },
+];
+
+export function TeamTable({ entrants, onChange, requireChecks }: Props) {
+  const seeds = useMemo(() => shownSeeds(seedTeams(entrants, requireChecks)), [entrants, requireChecks]);
   const duplicates = useMemo(() => {
     const counts = new Map<string, number>();
     for (const e of entrants) {
@@ -53,13 +61,14 @@ export function TeamTable({ entrants, onChange }: Props) {
   }
 
   return (
-    <table className="team-table">
+    <table className={`team-table ${requireChecks ? 'team-table--checks' : ''}`}>
       <thead>
         <tr>
           <th className="num">#</th>
           <th className="num">Seed</th>
           <th>Team name</th>
           <th>Time-trial result (min : sec . ms)</th>
+          {requireChecks && <th title="Checked in · Inspected · Passed the obstacle test">Cleared</th>}
           <th aria-label="Remove" />
         </tr>
       </thead>
@@ -69,11 +78,20 @@ export function TeamTable({ entrants, onChange }: Props) {
           const timeInvalid = time.error !== null;
           const duplicate = (duplicates.get(normalizeName(entrant.name)) ?? 0) > 1;
           const seed = seeds.get(entrant.id);
+          const blocked = requireChecks && !isCleared(entrant);
           return (
-            <tr key={entrant.id}>
-              <td className="num muted">{i + 1}</td>
-              <td className="num">{seed ? <span className="seed">{seed}</span> : <span className="muted">–</span>}</td>
-              <td>
+            <tr key={entrant.id} className={blocked ? 'team-row--blocked' : undefined}>
+              <td className="num muted team-table__index">{i + 1}</td>
+              <td className="num team-table__seed">
+                {seed ? (
+                  <span className="seed">{seed}</span>
+                ) : (
+                  <span className="muted" title={blocked ? 'Not cleared yet, so not seeded' : 'No time yet'}>
+                    –
+                  </span>
+                )}
+              </td>
+              <td className="team-table__name">
                 <input
                   className={duplicate ? 'invalid' : undefined}
                   value={entrant.name}
@@ -82,7 +100,7 @@ export function TeamTable({ entrants, onChange }: Props) {
                   onChange={(e) => update(entrant.id, { name: e.target.value })}
                 />
               </td>
-              <td>
+              <td className="team-table__time">
                 <div className="time-cell">
                   <div className="time-fields">
                     {TIME_FIELDS.map((field, f) => (
@@ -117,7 +135,27 @@ export function TeamTable({ entrants, onChange }: Props) {
                   </span>
                 </div>
               </td>
-              <td>
+              {requireChecks && (
+                <td className="team-table__checks">
+                  <div className="checks" role="group" aria-label={`${entrant.name || `Team ${i + 1}`}: eligibility`}>
+                    {CHECKS.map((c) => {
+                      const on = !!entrant.checks?.[c.key];
+                      return (
+                        <button
+                          key={c.key}
+                          className={`check ${on ? 'check--on' : ''}`}
+                          aria-pressed={on}
+                          title={`${c.label}: ${on ? 'yes' : 'not yet'}`}
+                          onClick={() => update(entrant.id, { checks: { ...NO_CHECKS, ...entrant.checks, [c.key]: !on } })}
+                        >
+                          {c.short}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </td>
+              )}
+              <td className="team-table__remove">
                 <button
                   className="icon-btn"
                   title={`Remove ${entrant.name || 'team'}`}

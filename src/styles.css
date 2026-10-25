@@ -914,6 +914,354 @@ input.invalid {
   color: var(--muted);
 }
 
+/* ---------- Race queue ---------- */
+
+/* Above the bracket: the race on track, the next ones with start times, and the day's finish. */
+.queue {
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+}
+
+.queue__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
+.queue__summary p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin: 0;
+}
+
+.queue__tag {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.queue__race {
+  color: var(--muted);
+}
+
+.queue__teams {
+  font-weight: 700;
+}
+
+.queue__deck-item + .queue__deck-item::before {
+  content: '·';
+  margin-right: 10px;
+  color: var(--muted);
+}
+
+.queue__meta {
+  margin-left: auto !important;
+  color: var(--muted);
+}
+
+.queue__slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queue__slot input {
+  width: 4.5em;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.queue__list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.queue__item {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 12em) 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  border-top: 1px solid var(--border);
+}
+
+.queue__item:first-child .queue__time {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.queue__moves {
+  display: flex;
+}
+
+.queue__moves .icon-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ---------- Spotlight (present mode) ---------- */
+
+.spotlight {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  padding: 0 40px 90px;
+}
+
+/* On a glass pill: the scene behind it has the start lights, which would swallow red text. */
+.spotlight__label {
+  margin: 0;
+  padding: 8px 24px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  font-family: var(--font-heading);
+  font-size: 28px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.spotlight--done .spotlight__label {
+  color: var(--text);
+}
+
+.spotlight__pair {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: 32px;
+  width: min(1400px, 100%);
+}
+
+/* Each team a large card; clicking one marks it as the winner. */
+.spotlight__team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 36px 24px;
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.spotlight__team:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow);
+}
+
+.spotlight__team .seed {
+  min-width: 56px;
+  height: 44px;
+  font-size: 24px;
+}
+
+.spotlight__name {
+  font-family: var(--font-heading);
+  font-size: clamp(32px, 4.5vw, 72px);
+  font-weight: 700;
+  line-height: 1.05;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.spotlight__time {
+  font-size: 18px;
+  color: var(--muted);
+}
+
+.spotlight__vs {
+  align-self: center;
+  font-family: var(--font-heading);
+  font-size: 40px;
+  color: var(--muted);
+}
+
+.spotlight__deck {
+  width: min(900px, 100%);
+}
+
+.spotlight__deck-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+.spotlight__deck ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 22px;
+}
+
+.spotlight__deck li {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 6px 0;
+}
+
+.spotlight__deck-race {
+  color: var(--muted);
+}
+
+.spotlight--done .spotlight__champion {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: clamp(48px, 7vw, 110px);
+  font-weight: 700;
+  text-align: center;
+}
+
+/* The podium page's results links, under the podium. */
+.podium-results {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* ---------- Printed results ---------- */
+
+.print-results {
+  display: none;
+}
+
+/* Printing shows only the results, black on white, whatever the theme. */
+@media print {
+  .app > :not(.print-results) {
+    display: none !important;
+  }
+
+  html,
+  body,
+  .app {
+    background: #fff !important;
+  }
+
+  .print-results {
+    display: block;
+    color: #000;
+    font-family: var(--font-body);
+    font-size: 11pt;
+  }
+
+  .print-results h1 {
+    margin: 0 0 4pt;
+    font-size: 22pt;
+  }
+
+  .print-results h2 {
+    margin: 16pt 0 6pt;
+    font-size: 14pt;
+  }
+
+  .print-results__date {
+    color: #444;
+  }
+
+  .print-results table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-results th,
+  .print-results td {
+    padding: 3pt 6pt;
+    border-bottom: 0.5pt solid #bbb;
+    text-align: left;
+  }
+
+  .print-results tr {
+    break-inside: avoid;
+  }
+
+  .print-results__podium {
+    padding-left: 0;
+    list-style: none;
+    font-size: 13pt;
+  }
+}
+
+/* ---------- Eligibility checks ---------- */
+
+.checks-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.checks-toggle input {
+  width: auto;
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.checks {
+  display: flex;
+  gap: 4px;
+}
+
+/* Each check a small pill: outlined until passed, then filled in the main color. */
+.check {
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.check:hover {
+  border-color: var(--accent);
+}
+
+.check--on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* A team not yet cleared stays editable, but reads as not in the running. */
+.team-row--blocked .team-table__name input {
+  opacity: 0.7;
+}
+
 /* ---------- Event file and backups ---------- */
 
 .backups-intro {
@@ -1962,6 +2310,8 @@ button.team:disabled {
 .app--day .standings table,
 .app--day .podium-place__step,
 .app--day .present-controls,
+.app--day .queue,
+.app--day .spotlight__team,
 .app--day .generate-bar {
   background: var(--glass-fill);
   backdrop-filter: var(--glass-blur);
@@ -2069,6 +2419,9 @@ button.team:disabled {
 
 .app--day .round-header,
 .app--day .podium-place__name,
+.app--day .spotlight__deck,
+.app--day .spotlight__deck-race,
+.app--day .spotlight__deck-title,
 .app--day .toolbar label span,
 .app--day .toolbar > span:not(.warn),
 .app--day .race-timer--stage:not(.race-timer--finished) .race-timer__label,
@@ -2096,6 +2449,13 @@ button.team:disabled {
   border-bottom: 0;
 }
 
+/* The light theme's bar stays put too: the scene starts below it, so a bar scrolling away would
+   uncover a band of bare page above the scene. */
+.app--day .topbar {
+  position: sticky;
+  z-index: 10;
+}
+
 /* Glass, as on the website: panels are .world-panel, cards are .world-card. */
 .app--world .panel {
   background: rgb(0 0 0 / 0.3);
@@ -2107,7 +2467,9 @@ button.team:disabled {
 .app--world .match,
 .app--world .standings table,
 .app--world .podium-place__step,
-.app--world .present-controls {
+.app--world .present-controls,
+.app--world .queue,
+.app--world .spotlight__team {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -2249,6 +2611,8 @@ button.team:disabled {
   }
 
   .app:not(.app--present) {
+    /* The slimmer bar: the scene starts right under it, with no strip of page between. */
+    --topbar-h: 56px;
     padding-bottom: var(--tabbar-h);
   }
 
@@ -2469,12 +2833,14 @@ button.team:disabled {
     width: 52px;
   }
 
+  /* The time and gap columns are as wide as their longest value (13px JetBrains Mono is 7.8px a
+     character), so a gap like +2:00.652 isn't cut off and short times leave room for names. */
   .app:not(.app--present) .standings th:nth-child(3) {
-    width: 84px;
+    width: calc(var(--time-ch, 8) * 7.8px + 16px);
   }
 
   .app:not(.app--present) .standings th:nth-child(4) {
-    width: 76px;
+    width: calc(var(--gap-ch, 9) * 7.8px + 16px);
   }
 
   .app:not(.app--present) .standings td {
@@ -2575,7 +2941,7 @@ button.team:disabled {
   }
 
   .team-table thead,
-  .team-table td:nth-child(1) {
+  .team-table .team-table__index {
     display: none;
   }
 
@@ -2591,6 +2957,13 @@ button.team:disabled {
     border-top: 1px solid var(--border);
   }
 
+  .team-table--checks tr {
+    grid-template-areas:
+      'seed name remove'
+      'time time time'
+      'checks checks checks';
+  }
+
   .team-table tr:first-child {
     border-top: 0;
   }
@@ -2602,23 +2975,27 @@ button.team:disabled {
     border: 0;
   }
 
-  .team-table td:nth-child(2) {
+  .team-table .team-table__seed {
     grid-area: seed;
   }
 
-  .team-table td:nth-child(3) {
+  .team-table .team-table__name {
     grid-area: name;
   }
 
-  .team-table td:nth-child(3) input {
+  .team-table .team-table__name input {
     width: 100%;
   }
 
-  .team-table td:nth-child(4) {
+  .team-table .team-table__time {
     grid-area: time;
   }
 
-  .team-table td:nth-child(5) {
+  .team-table .team-table__checks {
+    grid-area: checks;
+  }
+
+  .team-table .team-table__remove {
     grid-area: remove;
   }
 
@@ -2638,6 +3015,40 @@ button.team:disabled {
   .generate-bar .actions .btn {
     flex: 1;
     justify-content: center;
+  }
+
+  /* The race queue stacked: what's on track, on deck, then the day's finish. */
+  .queue__summary {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .queue__meta {
+    margin-left: 0 !important;
+  }
+
+  .queue__item {
+    grid-template-columns: 4.5em 1fr auto;
+    grid-template-areas:
+      'time race moves'
+      'time teams moves';
+    gap: 0 10px;
+  }
+
+  .queue__time {
+    grid-area: time;
+  }
+
+  .queue__item .queue__race {
+    grid-area: race;
+  }
+
+  .queue__item .queue__teams {
+    grid-area: teams;
+  }
+
+  .queue__moves {
+    grid-area: moves;
   }
 
   /* The undo notice above the tab bar, and backups as two lines: when and what, then Restore. */

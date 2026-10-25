@@ -4,7 +4,10 @@ import { BracketView } from './components/BracketView';
 import { ConfirmDialog, type ConfirmRequest } from './components/ConfirmDialog';
 import { CustomizePage } from './components/CustomizePage';
 import { PodiumView } from './components/PodiumView';
+import { QueuePanel } from './components/QueuePanel';
 import { RaceTimer } from './components/RaceTimer';
+import { PrintResults, ResultsActions, ResultsPanel } from './components/Results';
+import { Spotlight } from './components/Spotlight';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
 import { ThemeSwitch } from './components/ThemeSwitch';
@@ -25,13 +28,17 @@ import { describeEvent, EventFileError, eventFileName, parseEventFile, toEventFi
 import { describeResult, EMPTY_HISTORY, record, redo as redoResult, undo as undoResult, type History } from './lib/history';
 import { chime, unlockAudio } from './lib/chime';
 import { inkOn, onLight } from './lib/colors';
-import { seedTeams } from './lib/entrants';
+import { downloadFile } from './lib/download';
+import { seedTeams, shownSeeds } from './lib/entrants';
 import { showsBothBrackets } from './lib/layout';
+import { moveInQueue, raceQueue } from './lib/queue';
+import { resultsCsv, resultsFileName, standingsCsv } from './lib/results';
 import { initialState, loadState, saveState } from './lib/storage';
 import { adjust, phase, reset as resetTimer, setDuration, toggle } from './lib/timer';
 import type { AppState, BracketPane, SeededTeam, View } from './lib/types';
 
 const PRESENT_VIEWS: { view: View; label: string }[] = [
+  { view: 'spotlight', label: 'Spotlight' },
   { view: 'standings', label: 'Standings' },
   { view: 'bracket', label: 'Bracket' },
   { view: 'podium', label: 'Podium' },
@@ -44,7 +51,8 @@ const PANES: { pane: BracketPane; label: string }[] = [
 ];
 
 /** Icons for the view tabs, shown only on phones, where the tabs become a bottom tab bar. */
-const TAB_ICONS: Record<View, string> = {
+type TabView = Exclude<View, 'spotlight'>;
+const TAB_ICONS: Record<TabView, string> = {
   customize: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
   setup: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
   standings: 'M12 13V9.5M10 3h4M12 6a7 7 0 1 0 0 14a7 7 0 0 0 0-14',
@@ -52,7 +60,7 @@ const TAB_ICONS: Record<View, string> = {
   podium: 'M2 20h20M4 20v-7h5v7M9 20V8h6v12M15 20v-5h5v5',
 };
 
-function TabIcon({ view }: { view: View }) {
+function TabIcon({ view }: { view: TabView }) {
   return (
     <svg className="tabs__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden>
       <path d={TAB_ICONS[view]} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -182,7 +190,7 @@ export default function App() {
     document.title = event.title ? `${event.title} · Auto Bracket Generator` : 'Auto Bracket Generator';
   }, [event.title]);
 
-  const seeded = useMemo(() => seedTeams(entrants), [entrants]);
+  const seeded = useMemo(() => seedTeams(entrants, state.requireChecks), [entrants, state.requireChecks]);
   const bracketTeams = useMemo(
     () => (bracket ? Object.values(bracket.teams).sort((a, b) => a.seed - b.seed) : null),
     [bracket],
@@ -203,6 +211,24 @@ export default function App() {
   const shownFrom = Math.min(state[fromKey], Math.max(roundCount - 1, 0));
   const roundLabel = (r: number) => sectionRoundName(bracket!, pane === 'losers' ? 'losers' : 'main', r);
   const setShownFrom = (r: number) => patch({ [fromKey]: Math.min(Math.max(r, 0), roundCount - 1) });
+
+  // The running order: races ready to run, as the organizers have arranged them.
+  const queue = useMemo(() => (bracket ? raceQueue(bracket, state.queueOrder) : []), [bracket, state.queueOrder]);
+  const bracketSeeds = useMemo(() => shownSeeds(bracketTeams ?? []), [bracketTeams]);
+  const moveRace = (id: string, delta: -1 | 1) => patch({ queueOrder: moveInQueue(queue, id, delta) });
+
+  // Results out of the app: spreadsheets of the standings and races, and a printable page.
+  const exportStandings = () =>
+    downloadFile(resultsFileName(event.title, 'standings'), standingsCsv(standings), 'text/csv');
+  const exportResults = () =>
+    bracket && downloadFile(resultsFileName(event.title, 'results'), resultsCsv(bracket), 'text/csv');
+  const resultsActions = {
+    hasBracket: !!bracket,
+    hasStandings: standings.length > 0,
+    onStandings: exportStandings,
+    onResults: exportResults,
+    onPrint: () => window.print(),
+  };
 
   const setView = (next: View) => patch({ view: next });
   // On a phone, as in its apps, each tab opens at the top rather than where the last one was scrolled.
@@ -245,7 +271,15 @@ export default function App() {
   function generate() {
     const build = () =>
       replaceEvent(
-        { ...state, bracket: buildBracket(seeded, format), view: 'bracket', pane: 'winners', firstRound: 0, losersFirstRound: 0 },
+        {
+          ...state,
+          bracket: buildBracket(seeded, format),
+          view: 'bracket',
+          pane: 'winners',
+          firstRound: 0,
+          losersFirstRound: 0,
+          queueOrder: [],
+        },
         'before-regenerate',
       );
     if (!bracket || progress(bracket).decided === 0) return build();
@@ -269,7 +303,7 @@ export default function App() {
       confirmLabel: 'Reset bracket',
       onConfirm: () => {
         replaceEvent(
-          { ...state, bracket: resetBracket(bracket), pane: 'winners', firstRound: 0, losersFirstRound: 0 },
+          { ...state, bracket: resetBracket(bracket), pane: 'winners', firstRound: 0, losersFirstRound: 0, queueOrder: [] },
           'before-reset-bracket',
           'bracket-reset',
         );
@@ -359,15 +393,22 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', onFullscreen);
   }, []);
 
+  // Spotlight is for presenting only; out of present mode (or after a reload) it's the bracket.
+  useEffect(() => {
+    if (!present && view === 'spotlight') patch({ view: 'bracket' });
+  }, [present, view, patch]);
+
   const editing = view === 'customize' || view === 'setup';
   const canPresent = !editing && standings.length > 0;
+  // The views where races are run, with the timer and undo at hand.
+  const racing = (view === 'bracket' || view === 'spotlight') && !!bracket;
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e) => {
     const target = e.target instanceof Element ? e.target : null;
     if (confirmRequest || target?.closest('input, textarea, select')) return;
     // Ctrl+Z undoes the last result, Ctrl+Shift+Z or Ctrl+Y redoes it (Cmd on a Mac).
     const key = e.key.toLowerCase();
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && view === 'bracket' && (key === 'z' || key === 'y')) {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && racing && (key === 'z' || key === 'y')) {
       e.preventDefault();
       stepHistory(key === 'y' || e.shiftKey ? 'redo' : 'undo');
       return;
@@ -377,7 +418,7 @@ export default function App() {
       if (canPresent || present) togglePresent();
     } else if (e.key === 'Escape' && present) {
       exitPresent();
-    } else if (view === 'bracket' && bracket && e.key === ' ' && !target?.closest('button')) {
+    } else if (racing && e.key === ' ' && !target?.closest('button')) {
       e.preventDefault();
       toggleTimer();
     } else if (view === 'bracket' && canHideRounds && e.key === 'ArrowRight') {
@@ -492,7 +533,10 @@ export default function App() {
           onGenerate={generate}
           onViewBracket={() => setView('bracket')}
           onConfirm={setConfirmRequest}
+          requireChecks={state.requireChecks}
+          onRequireChecksChange={(on) => patch({ requireChecks: on })}
         >
+          <ResultsPanel {...resultsActions} />
           <BackupsPanel
             backups={backups}
             onExport={exportEvent}
@@ -509,10 +553,11 @@ export default function App() {
           {event.subtitle && <p>{event.subtitle}</p>}
           {view === 'standings' && <p className="event-header__tag">Time-trial standings</p>}
           {view === 'podium' && <p className="event-header__tag">Podium</p>}
+          {view === 'spotlight' && <p className="event-header__tag">Now on track</p>}
           {view === 'bracket' && split && (
             <p className="event-header__tag">{PANES.find((p) => p.pane === pane)!.label}</p>
           )}
-          {present && view === 'bracket' && bracket && (
+          {present && racing && (
             <RaceTimer timer={timer} onToggle={toggleTimer} onReset={resetRaceTimer} onAdjust={adjustRaceTimer} onSetDuration={setRaceLength} variant="stage" />
           )}
         </div>
@@ -543,8 +588,14 @@ export default function App() {
               )}
               {counts && (
                 <span className="muted">
-                  {counts.decided} of {counts.total} races decided
-                  <span className="toolbar__hint"> · click a team to mark the winner</span>
+                  {counts.decided < counts.total ? (
+                    <>
+                      {counts.decided} of {counts.total} races decided
+                      <span className="toolbar__hint"> · click a team to mark the winner</span>
+                    </>
+                  ) : (
+                    `All ${counts.total} races decided`
+                  )}
                 </span>
               )}
               {stale && <span className="warn">Teams, times or format changed since this bracket was made.</span>}
@@ -580,6 +631,16 @@ export default function App() {
               </div>
             </div>
           )}
+          {!present && (
+            <QueuePanel
+              bracket={bracket}
+              queue={queue}
+              seeds={bracketSeeds}
+              slotMs={state.slotMs}
+              onSlotChange={(ms) => patch({ slotMs: ms })}
+              onMove={moveRace}
+            />
+          )}
           <BracketView
             bracket={bracket}
             pane={pane}
@@ -591,9 +652,21 @@ export default function App() {
         </main>
       )}
 
+      {view === 'spotlight' && present && bracket && (
+        <main className="page page--stage">
+          <Spotlight bracket={bracket} queue={queue} seeds={bracketSeeds} onPick={pick} />
+        </main>
+      )}
+
       {view === 'podium' && bracket && (
         <main className="page page--stage">
           <PodiumView bracket={bracket} />
+          {!present && (
+            <div className="podium-results">
+              <span className="muted">Results:</span>
+              <ResultsActions {...resultsActions} />
+            </div>
+          )}
         </main>
       )}
 
@@ -621,7 +694,7 @@ export default function App() {
               </button>
             </>
           )}
-          {view === 'bracket' && bracket && (
+          {racing && (
             <>
               <button className="btn" onClick={toggleTimer} title="Start or pause the race timer (Space)">
                 {{ idle: 'Start timer', running: 'Pause timer', paused: 'Resume timer', finished: 'Reset timer' }[phase(timer, Date.now())]}
@@ -656,6 +729,7 @@ export default function App() {
         </div>
       )}
       {confirmRequest && <ConfirmDialog request={confirmRequest} onClose={closeConfirm} />}
+      <PrintResults event={event} standings={standings} bracket={bracket} />
     </div>
   );
 }
