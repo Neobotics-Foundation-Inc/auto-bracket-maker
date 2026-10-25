@@ -1,7 +1,23 @@
+import { useRef } from 'react';
 import { findMatch, isByeMatch, isPlayable, matchLabel } from '../lib/bracket';
 import { CARD_H } from '../lib/layout';
 import { formatTime } from '../lib/time';
 import { BYE, type Bracket, type Match, type SlotValue } from '../lib/types';
+import { useFitText } from './useFitText';
+
+/** Below this, a name is too small to read from the back of a hall. */
+const MIN_NAME_SIZE = 12;
+
+/** A team name at the largest size where it fits its half of the card without splitting a word. */
+function TeamName({ name, width, present }: { name: string; width: number; present: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useFitText(ref, MIN_NAME_SIZE, [name, width, present]);
+  return (
+    <span ref={ref} className="name">
+      {name}
+    </span>
+  );
+}
 
 interface Props {
   bracket: Bracket;
@@ -12,10 +28,12 @@ interface Props {
   y: number;
   /** Card width; wider in present mode. */
   width: number;
+  /** Present mode sets larger type, so names are fitted again. */
+  present: boolean;
   onPick: (teamId: string) => void;
 }
 
-export function MatchCard({ bracket, seeds, match, x, y, width, onPick }: Props) {
+export function MatchCard({ bracket, seeds, match, x, y, width, present, onPick }: Props) {
   const bye = isByeMatch(match);
   const playable = isPlayable(match);
   // Time-trial times explain the seeding, so they only appear in the opening round.
@@ -47,7 +65,7 @@ export function MatchCard({ bracket, seeds, match, x, y, width, onPick }: Props)
         onClick={() => onPick(slot)}
       >
         <span className="seed">{seeds.get(slot) ?? team.seed}</span>
-        <span className="name">{team.name}</span>
+        <TeamName name={team.name} width={width} present={present} />
         {showTime && <span className="time">{formatTime(team.timeMs)}</span>}
       </button>
     );

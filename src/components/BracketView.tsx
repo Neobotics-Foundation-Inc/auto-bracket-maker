@@ -97,6 +97,7 @@ export function BracketView({ bracket, pane, firstRound, losersFirstRound, prese
             x={x}
             y={y}
             width={layout.cardW}
+            present={present}
             onPick={(teamId) => onPick(match.id, teamId)}
           />
         ))}

@@ -1312,7 +1312,8 @@ input.invalid {
   font-size: 12px;
 }
 
-/* Up to three lines, which fill a team's half of the card. */
+/* Up to three lines, which fill a team's half of the card. Words are never split: a name that
+   doesn't fit is set smaller instead (MatchCard's TeamName). */
 .team .name {
   font-size: 18px;
   font-weight: 700;
@@ -1322,7 +1323,6 @@ input.invalid {
   -webkit-line-clamp: 3;
   line-clamp: 3;
   overflow: hidden;
-  overflow-wrap: anywhere;
 }
 
 .team .time {
