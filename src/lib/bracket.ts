@@ -191,6 +191,18 @@ export function buildBracket(teams: SeededTeam[], format: ThirdPlaceFormat = 'ra
 }
 
 /**
+ * The bracket as it was when it was generated: the same teams, seeds and format, with every
+ * result cleared. Built from the bracket's own teams, not the setup page's, so edits made there
+ * since don't change it.
+ */
+export function resetBracket(bracket: Bracket): Bracket {
+  return buildBracket(
+    Object.values(bracket.teams).sort((x, y) => x.seed - y.seed),
+    bracket.format,
+  );
+}
+
+/**
  * Records teamId as the winner of a match. Picking a different team corrects the
  * result; picking the current winner again clears it. Either way, later results that
  * involved the old winner or loser are cleared.

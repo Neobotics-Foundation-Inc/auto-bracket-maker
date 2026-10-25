@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { EMPTY_TIME, MAX_TEAMS, mergeNames, newId, validateEntrants } from '../lib/entrants';
 import type { Entrant, EventInfo, ThirdPlaceFormat } from '../lib/types';
 import type { ConfirmRequest } from './ConfirmDialog';
@@ -16,6 +16,8 @@ interface Props {
   onConfirm: (request: ConfirmRequest) => void;
   format: ThirdPlaceFormat;
   onFormatChange: (format: ThirdPlaceFormat) => void;
+  /** Panels after the teams, such as the event file and backups. */
+  children?: ReactNode;
 }
 
 const FORMATS: { value: ThirdPlaceFormat; title: string; detail: string }[] = [
@@ -183,6 +185,8 @@ export function SetupPage(props: Props) {
 
         <TeamTable entrants={entrants} onChange={onEntrantsChange} />
       </section>
+
+      {props.children}
 
       <footer className="generate-bar">
         <div className="status">

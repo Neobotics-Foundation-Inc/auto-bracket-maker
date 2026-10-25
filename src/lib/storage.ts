@@ -26,18 +26,21 @@ export const initialState: AppState = {
   timer: newTimer(),
 };
 
+/** A saved state (from storage, a backup or an event file), brought up to date. */
+export function migrateState(saved: Partial<AppState>): AppState {
+  const state: AppState = { ...initialState, ...saved };
+  return {
+    ...state,
+    entrants: state.entrants.map(migrateEntrant),
+    bracket: state.bracket && migrateBracket(state.bracket),
+    timer: migrateTimer(state.timer),
+  };
+}
+
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) {
-      const state: AppState = { ...initialState, ...(JSON.parse(raw) as Partial<AppState>) };
-      return {
-        ...state,
-        entrants: state.entrants.map(migrateEntrant),
-        bracket: state.bracket && migrateBracket(state.bracket),
-        timer: migrateTimer(state.timer),
-      };
-    }
+    if (raw) return migrateState(JSON.parse(raw) as Partial<AppState>);
   } catch {
     // Storage blocked or corrupt: start fresh.
   }

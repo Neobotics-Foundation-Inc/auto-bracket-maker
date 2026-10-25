@@ -914,6 +914,98 @@ input.invalid {
   color: var(--muted);
 }
 
+/* ---------- Event file and backups ---------- */
+
+.backups-intro {
+  margin: 0 0 14px;
+  font-size: 14px;
+}
+
+.backups {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.backup {
+  display: grid;
+  grid-template-columns: 9.5em 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.backup__when {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.backup__what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.backup__reason {
+  font-weight: 600;
+}
+
+.backup__what .muted {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.backup__delete {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+}
+
+/* ---------- Toast ---------- */
+
+/* Confirms an undo, redo, restore or import, then fades: a click on a projector is easy to doubt. */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 60;
+  max-width: calc(100vw - 32px);
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--chrome);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  font-weight: 600;
+  translate: -50% 0;
+  animation: toast-in 0.25s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: -50% 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
 /* ---------- Confirm dialog ---------- */
 
 .dialog-backdrop {
@@ -1820,8 +1912,8 @@ button.team:disabled {
 }
 
 /* Lifts the content above the grandstand. Fixed overlays keep their own positioning. */
-.app--world > :not(.world, .present-controls, .dialog-backdrop),
-.app--day > :not(.world, .present-controls, .dialog-backdrop) {
+.app--world > :not(.world, .present-controls, .dialog-backdrop, .toast),
+.app--day > :not(.world, .present-controls, .dialog-backdrop, .toast) {
   position: relative;
   z-index: 1;
 }
@@ -2546,6 +2638,20 @@ button.team:disabled {
   .generate-bar .actions .btn {
     flex: 1;
     justify-content: center;
+  }
+
+  /* The undo notice above the tab bar, and backups as two lines: when and what, then Restore. */
+  .app:not(.app--present) .toast {
+    bottom: calc(var(--tabbar-h) + 12px);
+  }
+
+  .backup {
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+  }
+
+  .backup__when {
+    grid-column: 1 / -1;
   }
 
   /* Narrow phones: the logo alone, so the switch and Present fit beside it. */

@@ -23,19 +23,25 @@ export const LOGO_VERSION = 2;
 // Kept apart from the main state: the images are large and rarely change.
 const KEY = 'auto-bracket-maker:branding';
 
+/** Only images can stand in for the logo, whatever a file or old save holds. */
+const imageOrNull = (logo: unknown): string | null =>
+  typeof logo === 'string' && /^data:image\/(png|jpeg|webp|gif|svg\+xml);base64,/.test(logo) ? logo : null;
+
+/** Saved branding (from storage or an event file), checked and brought up to date. */
+export function migrateBranding(saved: unknown): Branding {
+  if (!saved || typeof saved !== 'object') return DEFAULT_BRANDING;
+  // The first version kept one logo for both themes; venue backgrounds are no longer used.
+  const { logo, logoDark, logoLight, version, colors } = saved as Partial<Branding> & { logo?: unknown };
+  const checked = colors && isHex(colors.main) && isHex(colors.text) ? colors : null;
+  return logoDark || logoLight
+    ? { logoDark: imageOrNull(logoDark), logoLight: imageOrNull(logoLight), version, colors: checked }
+    : { logoDark: imageOrNull(logo), logoLight: imageOrNull(logo), colors: checked };
+}
+
 export function loadBranding(): Branding {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) {
-      // The first version kept one logo for both themes; venue backgrounds are no longer used.
-      const { logo, logoDark, logoLight, version, colors } = JSON.parse(raw) as Partial<Branding> & {
-        logo?: string | null;
-      };
-      const saved = colors && isHex(colors.main) && isHex(colors.text) ? colors : null;
-      return logoDark || logoLight
-        ? { logoDark: logoDark ?? null, logoLight: logoLight ?? null, version, colors: saved }
-        : { logoDark: logo ?? null, logoLight: logo ?? null, colors: saved };
-    }
+    if (raw) return migrateBranding(JSON.parse(raw));
   } catch {
     // Storage blocked or corrupt: use the defaults.
   }

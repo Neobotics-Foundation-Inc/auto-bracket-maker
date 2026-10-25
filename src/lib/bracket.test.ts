@@ -9,6 +9,7 @@ import {
   migrateBracket,
   podium,
   progress,
+  resetBracket,
   roundName,
   seedOrder,
 } from './bracket';
@@ -261,6 +262,26 @@ describe('double elimination', () => {
     expect(matchLabel(b, match(b, 'r2m0'))).toBe('Winners final');
     expect(matchLabel(b, match(b, 'l3m0'))).toBe('Losers final');
     expect(matchLabel(b, match(b, 'l0m1'))).toBe('Losers round 1 · 2');
+  });
+});
+
+describe('resetBracket', () => {
+  it('clears every result, back to the bracket as generated', () => {
+    for (const format of ['race', 'double', 'seed'] as const) {
+      const fresh = buildBracket(makeTeams(12), format);
+      let played = fresh;
+      for (let k = 0; k < 6; k++) {
+        const m = allMatches(played).find((x) => isPlayable(x) && !x.winner);
+        if (m) played = advanceWinner(played, m.id, m.a!);
+      }
+      expect(progress(played).decided).toBeGreaterThan(progress(fresh).decided);
+      expect(resetBracket(played)).toEqual(fresh);
+    }
+  });
+
+  it('keeps the bracket’s own teams, whatever has changed on the setup page since', () => {
+    const fresh = buildBracket(makeTeams(5), 'race');
+    expect(Object.keys(resetBracket(fresh).teams).sort()).toEqual(['t1', 't2', 't3', 't4', 't5']);
   });
 });
 

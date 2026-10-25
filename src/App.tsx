@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BackupsPanel } from './components/BackupsPanel';
 import { BracketView } from './components/BracketView';
 import { ConfirmDialog, type ConfirmRequest } from './components/ConfirmDialog';
 import { CustomizePage } from './components/CustomizePage';
@@ -7,8 +8,21 @@ import { RaceTimer } from './components/RaceTimer';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
 import { ThemeSwitch } from './components/ThemeSwitch';
-import { advanceWinner, buildBracket, progress, sectionRoundName } from './lib/bracket';
+import {
+  addBackup,
+  contentOf,
+  loadBackups,
+  reasonFor,
+  restoreState,
+  saveBackups,
+  withoutBackup,
+  type Backup,
+  type BackupReason,
+} from './lib/backups';
+import { advanceWinner, buildBracket, progress, resetBracket, sectionRoundName } from './lib/bracket';
 import { loadBranding, saveBranding, upgradeLogo, type Branding } from './lib/branding';
+import { describeEvent, EventFileError, eventFileName, parseEventFile, toEventFile } from './lib/eventFile';
+import { describeResult, EMPTY_HISTORY, record, redo as redoResult, undo as undoResult, type History } from './lib/history';
 import { chime, unlockAudio } from './lib/chime';
 import { inkOn, onLight } from './lib/colors';
 import { seedTeams } from './lib/entrants';
@@ -99,6 +113,55 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  // A short message after an undo, redo, restore or import, so a click on a projector is confirmed.
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const id = window.setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(id);
+  }, [toast]);
+
+  // Backups: a copy of the event a couple of seconds after each change settles, and one straight
+  // away before anything that replaces it. Kept in this browser (see lib/backups).
+  const [backups, setBackups] = useState<Backup[]>(loadBackups);
+  const keepBackup = useCallback((content: ReturnType<typeof contentOf>, reason?: BackupReason) => {
+    setBackups((list) => {
+      const next = addBackup(list, content, reason ?? reasonFor(list[0], content), Date.now());
+      return next === list ? list : saveBackups(next);
+    });
+  }, []);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  useEffect(() => {
+    const id = window.setTimeout(() => keepBackup(contentOf(stateRef.current)), 2000);
+    return () => clearTimeout(id);
+  }, [event, entrants, format, bracket, keepBackup]);
+
+  // Undo and redo for race results, this session only (backups cover a reload).
+  const [history, setHistory] = useState<History>(EMPTY_HISTORY);
+  const pick = (matchId: string, teamId: string) => {
+    if (!state.bracket) return;
+    const next = advanceWinner(state.bracket, matchId, teamId);
+    if (next === state.bracket) return;
+    setHistory((h) => record(h, state.bracket!));
+    patch({ bracket: next });
+  };
+  const stepHistory = (direction: 'undo' | 'redo') => {
+    if (!state.bracket) return;
+    const step = (direction === 'undo' ? undoResult : redoResult)(history, state.bracket);
+    if (!step) return;
+    // The result being undone is the one that turned the earlier bracket into the later one.
+    const change =
+      direction === 'undo' ? describeResult(step.bracket, state.bracket) : describeResult(state.bracket, step.bracket);
+    setHistory(step.history);
+    patch({ bracket: step.bracket });
+    setToast(`${direction === 'undo' ? 'Undid' : 'Redid'}: ${change ?? 'the last result'}`);
+  };
+  const canUndo = !!state.bracket && history.past.length > 0;
+  const canRedo = !!state.bracket && history.future.length > 0;
+  const lastResult = canUndo ? describeResult(history.past[history.past.length - 1], state.bracket!) : null;
+  const nextResult = canRedo ? describeResult(state.bracket!, history.future[history.future.length - 1]) : null;
   // The event's theme colors; without them the stylesheet's Neobotics colors apply.
   const colors = branding.colors;
   useEffect(() => {
@@ -167,30 +230,113 @@ export default function App() {
     return () => clearTimeout(id);
   }, [timer.endsAt]);
 
+  /**
+   * Replaces the event wholesale, after backing up the one it replaces. An event brought back (an
+   * import, a restore, a reset bracket) is kept as a backup in turn, labeled for what happened, so
+   * later changes are compared with it rather than with the event it replaced. Undo starts afresh.
+   */
+  const replaceEvent = (next: AppState, before: BackupReason, after?: BackupReason) => {
+    keepBackup(contentOf(state), before);
+    if (after) keepBackup(contentOf(next), after);
+    setHistory(EMPTY_HISTORY);
+    setState(next);
+  };
+
   function generate() {
     const build = () =>
-      patch({
-        bracket: buildBracket(seeded, format),
-        view: 'bracket',
-        pane: 'winners',
-        firstRound: 0,
-        losersFirstRound: 0,
-      });
+      replaceEvent(
+        { ...state, bracket: buildBracket(seeded, format), view: 'bracket', pane: 'winners', firstRound: 0, losersFirstRound: 0 },
+        'before-regenerate',
+      );
     if (!bracket || progress(bracket).decided === 0) return build();
     setConfirmRequest({
       title: 'Regenerate the bracket?',
-      message: 'This builds a new bracket from the current teams, times and format, and clears every race result.',
+      message:
+        'This builds a new bracket from the current teams, times and format, and clears every race result. The current bracket is kept in Backups on the Setup page.',
       confirmLabel: 'Regenerate',
       onConfirm: build,
+    });
+  }
+
+  // Back to the bracket as generated: the same teams and seeds, every result cleared, the first
+  // tab and round showing.
+  function resetResults() {
+    if (!bracket) return;
+    const decided = progress(bracket).decided;
+    setConfirmRequest({
+      title: 'Reset the bracket?',
+      message: `This clears all ${decided} race ${decided === 1 ? 'result' : 'results'}, putting the bracket back as it was when it was generated. The bracket with its results is kept in Backups on the Setup page.`,
+      confirmLabel: 'Reset bracket',
+      onConfirm: () => {
+        replaceEvent(
+          { ...state, bracket: resetBracket(bracket), pane: 'winners', firstRound: 0, losersFirstRound: 0 },
+          'before-reset-bracket',
+          'bracket-reset',
+        );
+        setToast('Bracket reset');
+      },
+    });
+  }
+
+  function deleteBackup(backup: Backup) {
+    setConfirmRequest({
+      title: 'Delete this backup?',
+      message: `${describeEvent(backup.content)}. It can’t be brought back once deleted.`,
+      confirmLabel: 'Delete',
+      onConfirm: () => setBackups((list) => saveBackups(withoutBackup(list, backup))),
     });
   }
 
   function resetAll() {
     setConfirmRequest({
       title: 'Reset everything?',
-      message: 'This clears the event name, every team and time, and all race results.',
+      message:
+        'This clears the event name, every team and time, and all race results. The event is kept in Backups on the Setup page.',
       confirmLabel: 'Reset all',
-      onConfirm: () => setState({ ...initialState, theme }),
+      onConfirm: () => replaceEvent({ ...initialState, theme }, 'before-reset'),
+    });
+  }
+
+  // The event as a file: everything, logo and colors included, to keep anywhere and open on any computer.
+  function exportEvent() {
+    const now = new Date();
+    const blob = new Blob([JSON.stringify(toEventFile(state, branding, now), null, 1)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = eventFileName(event.title, now);
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  async function importEvent(file: File): Promise<string | null> {
+    let opened: ReturnType<typeof parseEventFile>;
+    try {
+      opened = parseEventFile(await file.text());
+    } catch (e) {
+      return e instanceof EventFileError ? e.message : `Couldn’t read ${file.name}.`;
+    }
+    setConfirmRequest({
+      title: 'Open this event?',
+      message: `${describeEvent(opened.state)}. It replaces the event here, with its logo and colors; the current event is kept in Backups.`,
+      confirmLabel: 'Open event',
+      onConfirm: () => {
+        replaceEvent({ ...opened.state, theme, view: 'setup' }, 'before-import', 'imported');
+        changeBranding(opened.branding);
+        setToast(`Opened ${opened.state.event.title.trim() || file.name}`);
+      },
+    });
+    return null;
+  }
+
+  function restoreBackup(backup: Backup) {
+    setConfirmRequest({
+      title: 'Restore this backup?',
+      message: `${describeEvent(backup.content)}. It replaces the event here; the current event is kept in Backups.`,
+      confirmLabel: 'Restore',
+      onConfirm: () => {
+        replaceEvent(restoreState(state, backup), 'before-restore', 'restored');
+        setToast('Backup restored');
+      },
     });
   }
 
@@ -218,7 +364,15 @@ export default function App() {
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e) => {
     const target = e.target instanceof Element ? e.target : null;
-    if (confirmRequest || target?.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (confirmRequest || target?.closest('input, textarea, select')) return;
+    // Ctrl+Z undoes the last result, Ctrl+Shift+Z or Ctrl+Y redoes it (Cmd on a Mac).
+    const key = e.key.toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && view === 'bracket' && (key === 'z' || key === 'y')) {
+      e.preventDefault();
+      stepHistory(key === 'y' || e.shiftKey ? 'redo' : 'undo');
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'f' || e.key === 'F') {
       if (canPresent || present) togglePresent();
     } else if (e.key === 'Escape' && present) {
@@ -338,7 +492,15 @@ export default function App() {
           onGenerate={generate}
           onViewBracket={() => setView('bracket')}
           onConfirm={setConfirmRequest}
-        />
+        >
+          <BackupsPanel
+            backups={backups}
+            onExport={exportEvent}
+            onImport={importEvent}
+            onRestore={restoreBackup}
+            onDelete={deleteBackup}
+          />
+        </SetupPage>
       )}
 
       {showEventHeader && (
@@ -388,8 +550,29 @@ export default function App() {
               {stale && <span className="warn">Teams, times or format changed since this bracket was made.</span>}
               <div className="actions">
                 <RaceTimer timer={timer} onToggle={toggleTimer} onReset={resetRaceTimer} onAdjust={adjustRaceTimer} onSetDuration={setRaceLength} variant="toolbar" />
-                <button className="btn" onClick={() => setView('setup')}>
-                  Back to setup
+                <button
+                  className="btn"
+                  disabled={!canUndo}
+                  onClick={() => stepHistory('undo')}
+                  title={canUndo ? `Undo: ${lastResult ?? 'the last result'} (Ctrl+Z)` : 'Nothing to undo'}
+                >
+                  Undo
+                </button>
+                <button
+                  className="btn"
+                  disabled={!canRedo}
+                  onClick={() => stepHistory('redo')}
+                  title={canRedo ? `Redo: ${nextResult ?? 'the result undone'} (Ctrl+Shift+Z)` : 'Nothing to redo'}
+                >
+                  Redo
+                </button>
+                <button
+                  className="btn"
+                  disabled={!counts?.decided}
+                  onClick={resetResults}
+                  title={counts?.decided ? 'Clear every result, back to the bracket as generated' : 'No results to clear yet'}
+                >
+                  Reset bracket
                 </button>
                 <button className="btn btn-quiet" onClick={resetAll}>
                   Reset all
@@ -403,7 +586,7 @@ export default function App() {
             firstRound={state.firstRound}
             losersFirstRound={state.losersFirstRound}
             present={present}
-            onPick={(matchId, teamId) => patch({ bracket: advanceWinner(bracket, matchId, teamId) })}
+            onPick={pick}
           />
         </main>
       )}
@@ -448,6 +631,11 @@ export default function App() {
                   Reset timer
                 </button>
               )}
+              {canUndo && (
+                <button className="btn" onClick={() => stepHistory('undo')} title={`Undo: ${lastResult ?? 'the last result'} (Ctrl+Z)`}>
+                  Undo
+                </button>
+              )}
             </>
           )}
           {bracket &&
@@ -462,6 +650,11 @@ export default function App() {
         </div>
       )}
 
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
       {confirmRequest && <ConfirmDialog request={confirmRequest} onClose={closeConfirm} />}
     </div>
   );
