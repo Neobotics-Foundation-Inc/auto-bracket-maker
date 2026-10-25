@@ -35,9 +35,17 @@ export function useFitText(ref: RefObject<HTMLElement | null>, minSize: number, 
         el.style.setProperty('-webkit-line-clamp', lines);
       }
     };
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const measure = () => ({
+      textWidth: range.getBoundingClientRect().width,
+      boxWidth: el.getBoundingClientRect().width,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    });
     const fitsAt = (size: number) => {
       setSize(size);
-      return textFits(el, size * lineRatio);
+      return textFits(measure(), size * lineRatio);
     };
     if (fitsAt(max)) {
       for (const prop of sizing) el.style.removeProperty(prop);
@@ -45,7 +53,8 @@ export function useFitText(ref: RefObject<HTMLElement | null>, minSize: number, 
     }
     const size = largestFit(fitsAt, max, minSize);
     setSize(size);
-    if (el.scrollWidth > el.clientWidth + 1) {
+    const { textWidth, boxWidth } = measure();
+    if (textWidth > boxWidth + 0.01) {
       el.style.setProperty('hyphens', 'auto');
       el.style.setProperty('overflow-wrap', 'anywhere');
     }

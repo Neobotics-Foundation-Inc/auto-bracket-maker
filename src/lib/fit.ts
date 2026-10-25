@@ -7,17 +7,19 @@ export function largestFit(fits: (size: number) => boolean, max: number, min: nu
 }
 
 export interface TextBox {
-  scrollWidth: number;
-  clientWidth: number;
+  /** The text's exact width (from a Range), and the box's: fractional, unlike scrollWidth,
+   *  whose rounding let text a pixel or two too wide pass, its last letter clipped. */
+  textWidth: number;
+  boxWidth: number;
   scrollHeight: number;
   clientHeight: number;
 }
 
 /**
- * Whether text fits its box: no wider (a word too long for a line), and no taller by a line or
- * more (more lines than the box shows). Glyphs poke a pixel or two past tight line boxes, so
- * height only counts as overflowing by most of a line.
+ * Whether text fits its box: no wider at all (a word too long for a line), and no taller by a
+ * line or more (more lines than the box shows). Glyphs poke a pixel or two past tight line
+ * boxes, so height only counts as overflowing by most of a line.
  */
 export function textFits(box: TextBox, lineHeight: number): boolean {
-  return box.scrollWidth <= box.clientWidth + 1 && box.scrollHeight <= box.clientHeight + lineHeight * 0.5;
+  return box.textWidth <= box.boxWidth + 0.01 && box.scrollHeight <= box.clientHeight + lineHeight * 0.5;
 }
