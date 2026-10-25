@@ -1,5 +1,6 @@
 import { migrateBracket } from './bracket';
 import { partsFromMs, parseTime } from './time';
+import { migrateTimer, newTimer } from './timer';
 import type { AppState, Entrant } from './types';
 
 /** Entrants saved before times had separate boxes kept one timeText string. */
@@ -17,11 +18,12 @@ export const initialState: AppState = {
   entrants: [],
   format: 'race',
   bracket: null,
-  view: 'setup',
+  view: 'customize',
   pane: 'winners',
   theme: 'dark',
   firstRound: 0,
   losersFirstRound: 0,
+  timer: newTimer(),
 };
 
 export function loadState(): AppState {
@@ -33,6 +35,7 @@ export function loadState(): AppState {
         ...state,
         entrants: state.entrants.map(migrateEntrant),
         bracket: state.bracket && migrateBracket(state.bracket),
+        timer: migrateTimer(state.timer),
       };
     }
   } catch {

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { podium } from '../lib/bracket';
+import { shownSeeds } from '../lib/entrants';
 import { formatTime } from '../lib/time';
 import type { Bracket, ThirdPlaceFormat } from '../lib/types';
 import { FitToScreen } from './FitToScreen';
@@ -60,6 +61,7 @@ function FittedName({ name, maxSize }: { name: string; maxSize: number }) {
 /** First, second and third on a podium, with the winner on the centre step. */
 export function PodiumView({ bracket }: Props) {
   const result = podium(bracket);
+  const seeds = shownSeeds(Object.values(bracket.teams));
   const ids = { 1: result.first, 2: result.second, 3: result.third };
   // With 2 teams there are no semifinals, so no third place to show.
   const places = PLACES.filter((p) => p.place !== 3 || bracket.rounds.length >= 2).map((p) => ({
@@ -81,7 +83,7 @@ export function PodiumView({ bracket }: Props) {
                   <>
                     <FittedName name={team.name} maxSize={place === 1 ? 38 : 30} />
                     <span className="podium-place__meta">
-                      Seed {team.seed} · Time trial <span className="mono">{formatTime(team.timeMs)}</span>
+                      Seed {seeds.get(team.id) ?? team.seed} · Time trial <span className="mono">{formatTime(team.timeMs)}</span>
                     </span>
                   </>
                 ) : (

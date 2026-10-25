@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BracketView } from './components/BracketView';
 import { ConfirmDialog, type ConfirmRequest } from './components/ConfirmDialog';
+import { CustomizePage } from './components/CustomizePage';
 import { PodiumView } from './components/PodiumView';
+import { RaceTimer } from './components/RaceTimer';
 import { SetupPage } from './components/SetupPage';
 import { StandingsView } from './components/StandingsView';
 import { ThemeSwitch } from './components/ThemeSwitch';
 import { advanceWinner, buildBracket, progress, sectionRoundName } from './lib/bracket';
+import { loadBranding, saveBranding, upgradeLogo, type Branding } from './lib/branding';
+import { chime, unlockAudio } from './lib/chime';
+import { inkOn, onLight } from './lib/colors';
 import { seedTeams } from './lib/entrants';
 import { showsBothBrackets } from './lib/layout';
 import { initialState, loadState, saveState } from './lib/storage';
+import { adjust, phase, reset as resetTimer, setDuration, toggle } from './lib/timer';
 import type { AppState, BracketPane, SeededTeam, View } from './lib/types';
 
 const PRESENT_VIEWS: { view: View; label: string }[] = [
@@ -23,11 +29,67 @@ const PANES: { pane: BracketPane; label: string }[] = [
   { pane: 'grand', label: 'Grand final' },
 ];
 
+/** Icons for the view tabs, shown only on phones, where the tabs become a bottom tab bar. */
+const TAB_ICONS: Record<View, string> = {
+  customize: 'M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1M15 4v4M9 10v4M17 16v4',
+  setup: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  standings: 'M12 13V9.5M10 3h4M12 6a7 7 0 1 0 0 14a7 7 0 0 0 0-14',
+  bracket: 'M3 5h5v14H3M8 12h5M13 8h8M13 16h8M13 8v8',
+  podium: 'M2 20h20M4 20v-7h5v7M9 20V8h6v12M15 20v-5h5v5',
+};
+
+function TabIcon({ view }: { view: View }) {
+  return (
+    <svg className="tabs__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden>
+      <path d={TAB_ICONS[view]} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const signature = (teams: SeededTeam[]) => JSON.stringify(teams.map((t) => [t.id, t.name, t.timeMs]));
 
 export default function App() {
   const [state, setState] = useState<AppState>(loadState);
+  const [branding, setBranding] = useState<Branding>(loadBranding);
+  const changeBranding = (next: Branding) => {
+    setBranding(next);
+    return saveBranding(next);
+  };
+  // A logo saved before the current processing (say, with its white background still on) is redone once.
+  useEffect(() => {
+    let cancelled = false;
+    upgradeLogo(loadBranding())
+      .then((upgraded) => {
+        if (upgraded && !cancelled) {
+          const next = { ...loadBranding(), ...upgraded };
+          setBranding(next);
+          saveBranding(next);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [present, setPresent] = useState(false);
+  // Presenting, the controls and cursor fade out after a few seconds without input.
+  const [idle, setIdle] = useState(false);
+  useEffect(() => {
+    if (!present) return setIdle(false);
+    let timer = 0;
+    const wake = () => {
+      setIdle(false);
+      clearTimeout(timer);
+      timer = window.setTimeout(() => setIdle(true), 3000);
+    };
+    wake();
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart'] as const;
+    for (const e of events) window.addEventListener(e, wake);
+    return () => {
+      clearTimeout(timer);
+      for (const e of events) window.removeEventListener(e, wake);
+    };
+  }, [present]);
   const [confirmRequest, setConfirmRequest] = useState<ConfirmRequest | null>(null);
   const closeConfirm = useCallback(() => setConfirmRequest(null), []);
   const { event, entrants, format, bracket, view, theme } = state;
@@ -37,6 +99,22 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+  // The event's theme colours; without them the stylesheet's Neobotics colours apply.
+  const colors = branding.colors;
+  useEffect(() => {
+    const root = document.documentElement.style;
+    const vars = colors && {
+      '--brand': colors.main,
+      '--brand-ink': inkOn(colors.main),
+      '--brand-light': onLight(colors.main),
+      '--brand-light-ink': inkOn(onLight(colors.main)),
+      '--brand-text': colors.text,
+    };
+    for (const name of ['--brand', '--brand-ink', '--brand-light', '--brand-light-ink', '--brand-text']) {
+      if (vars) root.setProperty(name, vars[name as keyof typeof vars]);
+      else root.removeProperty(name);
+    }
+  }, [colors]);
   useEffect(() => {
     document.title = event.title ? `${event.title} · Auto Bracket Maker` : 'Auto Bracket Maker';
   }, [event.title]);
@@ -64,6 +142,30 @@ export default function App() {
   const setShownFrom = (r: number) => patch({ [fromKey]: Math.min(Math.max(r, 0), roundCount - 1) });
 
   const setView = (next: View) => patch({ view: next });
+  // On a phone, as in its apps, each tab opens at the top rather than where the last one was scrolled.
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 720px)').matches) window.scrollTo(0, 0);
+  }, [view]);
+
+  // The race timer: one button starts, pauses or (once time is up) resets it.
+  const { timer } = state;
+  const toggleTimer = () => {
+    unlockAudio();
+    setState((s) => ({ ...s, timer: toggle(s.timer, Date.now()) }));
+  };
+  const resetRaceTimer = () => setState((s) => ({ ...s, timer: resetTimer(s.timer) }));
+  const adjustRaceTimer = (steps: number) => setState((s) => ({ ...s, timer: adjust(s.timer, steps) }));
+  const setRaceLength = (ms: number) => setState((s) => ({ ...s, timer: setDuration(s.timer, ms) }));
+  // At zero: the chime, and a redraw so controls show the timer has finished.
+  const [, setTimeUp] = useState(0);
+  useEffect(() => {
+    if (timer.endsAt === null || timer.endsAt <= Date.now()) return;
+    const id = window.setTimeout(() => {
+      chime();
+      setTimeUp((n) => n + 1);
+    }, timer.endsAt - Date.now());
+    return () => clearTimeout(id);
+  }, [timer.endsAt]);
 
   function generate() {
     const build = () =>
@@ -111,7 +213,8 @@ export default function App() {
     return () => document.removeEventListener('fullscreenchange', onFullscreen);
   }, []);
 
-  const canPresent = view !== 'setup' && standings.length > 0;
+  const editing = view === 'customize' || view === 'setup';
+  const canPresent = !editing && standings.length > 0;
   const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
   keyHandler.current = (e) => {
     const target = e.target instanceof Element ? e.target : null;
@@ -120,6 +223,9 @@ export default function App() {
       if (canPresent || present) togglePresent();
     } else if (e.key === 'Escape' && present) {
       exitPresent();
+    } else if (view === 'bracket' && bracket && e.key === ' ' && !target?.closest('button')) {
+      e.preventDefault();
+      toggleTimer();
     } else if (view === 'bracket' && canHideRounds && e.key === 'ArrowRight') {
       setShownFrom(shownFrom + 1);
     } else if (view === 'bracket' && canHideRounds && e.key === 'ArrowLeft') {
@@ -132,7 +238,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', listener);
   }, []);
 
-  const showEventHeader = view !== 'setup';
+  const showEventHeader = !editing;
+  const customLogo = theme === 'dark' ? branding.logoDark : branding.logoLight;
   const paneSwitch = (
     <div className="segmented" role="group" aria-label="Bracket">
       {PANES.map(({ pane: p, label }) => (
@@ -146,34 +253,46 @@ export default function App() {
 
   return (
     <div
-      className={`app ${present ? 'app--present' : ''} ${theme === 'dark' ? 'app--world' : ''} ${
-        view === 'setup' ? 'app--setup' : ''
-      }`}
+      className={`app ${present ? 'app--present' : ''} ${present && idle ? 'app--idle' : ''} ${
+        theme === 'dark' ? 'app--world' : 'app--day'
+      } ${editing ? 'app--setup' : ''}`}
     >
-      {theme === 'dark' && (
-        // The Neobotics garage at night, as behind the website's home page.
-        <div className="world" aria-hidden>
-          <picture>
-            <source media="(max-aspect-ratio: 1/1)" srcSet="./world/garage-m.webp" />
-            <img src="./world/garage.webp" alt="" />
-          </picture>
-        </div>
-      )}
+      {/* A grandstand beside the track, rendered in Blender (art/grandstand.py) in the style of
+          the website's garage: at night for the dark theme, by day for the light theme. */}
+      <div className="world" aria-hidden key={theme}>
+        <picture>
+          <source
+            media="(max-aspect-ratio: 1/1)"
+            srcSet={theme === 'dark' ? './world/grandstand-m.webp' : './world/grandstand-day-m.webp'}
+          />
+          <img src={theme === 'dark' ? './world/grandstand.webp' : './world/grandstand-day.webp'} alt="" />
+        </picture>
+      </div>
       {!present && (
         <header className="topbar">
           <div className="brand">
-            <img
-              src={
-                theme === 'dark'
-                  ? './brand/neobotics-logo-transparent-white.webp'
-                  : './brand/neobotics-logo-transparent.webp'
-              }
-              alt="Neobotics Foundation Inc."
-            />
+            {customLogo ? (
+              <img className="custom-logo" src={customLogo} alt={event.title || 'Event logo'} />
+            ) : (
+              <img
+                className="neobotics-logo"
+                src={
+                  theme === 'dark'
+                    ? './brand/neobotics-logo-transparent-white.webp'
+                    : './brand/neobotics-logo-transparent.webp'
+                }
+                alt="Neobotics Foundation Inc."
+              />
+            )}
             <span>Bracket Maker</span>
           </div>
           <nav className="tabs" aria-label="Views">
+            <button className={view === 'customize' ? 'active' : ''} onClick={() => setView('customize')}>
+              <TabIcon view="customize" />
+              Customize
+            </button>
             <button className={view === 'setup' ? 'active' : ''} onClick={() => setView('setup')}>
+              <TabIcon view="setup" />
               Setup
             </button>
             <button
@@ -181,12 +300,15 @@ export default function App() {
               disabled={!standings.length}
               onClick={() => setView('standings')}
             >
+              <TabIcon view="standings" />
               Standings
             </button>
             <button className={view === 'bracket' ? 'active' : ''} disabled={!bracket} onClick={() => setView('bracket')}>
+              <TabIcon view="bracket" />
               Bracket
             </button>
             <button className={view === 'podium' ? 'active' : ''} disabled={!bracket} onClick={() => setView('podium')}>
+              <TabIcon view="podium" />
               Podium
             </button>
           </nav>
@@ -197,6 +319,10 @@ export default function App() {
             </button>
           </div>
         </header>
+      )}
+
+      {view === 'customize' && (
+        <CustomizePage branding={branding} onBrandingChange={changeBranding} onNext={() => setView('setup')} />
       )}
 
       {view === 'setup' && (
@@ -223,6 +349,9 @@ export default function App() {
           {view === 'podium' && <p className="event-header__tag">Podium</p>}
           {view === 'bracket' && split && (
             <p className="event-header__tag">{PANES.find((p) => p.pane === pane)!.label}</p>
+          )}
+          {present && view === 'bracket' && bracket && (
+            <RaceTimer timer={timer} onToggle={toggleTimer} onReset={resetRaceTimer} onAdjust={adjustRaceTimer} onSetDuration={setRaceLength} variant="stage" />
           )}
         </div>
       )}
@@ -252,11 +381,13 @@ export default function App() {
               )}
               {counts && (
                 <span className="muted">
-                  {counts.decided} of {counts.total} races decided · click a team to mark the winner
+                  {counts.decided} of {counts.total} races decided
+                  <span className="toolbar__hint"> · click a team to mark the winner</span>
                 </span>
               )}
               {stale && <span className="warn">Teams, times or format changed since this bracket was made.</span>}
               <div className="actions">
+                <RaceTimer timer={timer} onToggle={toggleTimer} onReset={resetRaceTimer} onAdjust={adjustRaceTimer} onSetDuration={setRaceLength} variant="toolbar" />
                 <button className="btn" onClick={() => setView('setup')}>
                   Back to setup
                 </button>
@@ -284,7 +415,7 @@ export default function App() {
       )}
 
       {present && (
-        <div className="present-controls">
+        <div className={`present-controls ${idle ? 'present-controls--idle' : ''}`}>
           {view === 'bracket' && split && paneSwitch}
           {view === 'bracket' && bracket && canHideRounds && (
             <>
@@ -305,6 +436,18 @@ export default function App() {
               >
                 ▶
               </button>
+            </>
+          )}
+          {view === 'bracket' && bracket && (
+            <>
+              <button className="btn" onClick={toggleTimer} title="Start or pause the race timer (Space)">
+                {{ idle: 'Start timer', running: 'Pause timer', paused: 'Resume timer', finished: 'Reset timer' }[phase(timer, Date.now())]}
+              </button>
+              {timer.pausedMs !== null && (
+                <button className="btn" onClick={resetRaceTimer}>
+                  Reset timer
+                </button>
+              )}
             </>
           )}
           {bracket &&

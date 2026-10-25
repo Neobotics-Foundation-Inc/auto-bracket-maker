@@ -51,6 +51,16 @@ export function seedTeams(entrants: Entrant[]): SeededTeam[] {
     .map((row, i) => ({ id: row.entrant.id, name: row.entrant.name.trim(), timeMs: row.timeMs, seed: i + 1 }));
 }
 
+/**
+ * The seed number to show for each team: tied times share the better one, and the next time
+ * skips past them (12.00, 12.00, 23.00 → 1, 1, 3). Seeds themselves stay distinct, since the
+ * bracket needs an order to place teams in.
+ */
+export function shownSeeds(teams: { id: string; timeMs: number }[]): Map<string, number> {
+  const times = teams.map((t) => t.timeMs).sort((x, y) => x - y);
+  return new Map(teams.map((t) => [t.id, times.indexOf(t.timeMs) + 1]));
+}
+
 /** Human-readable reasons the bracket can't be generated yet; empty when ready. */
 export function validateEntrants(entrants: Entrant[]): string[] {
   const problems: string[] = [];

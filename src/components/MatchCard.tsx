@@ -1,17 +1,21 @@
 import { findMatch, isByeMatch, isPlayable, matchLabel } from '../lib/bracket';
-import { CARD_H, CARD_W } from '../lib/layout';
+import { CARD_H } from '../lib/layout';
 import { formatTime } from '../lib/time';
 import { BYE, type Bracket, type Match, type SlotValue } from '../lib/types';
 
 interface Props {
   bracket: Bracket;
+  /** The seed number to show for each team (tied times share one). */
+  seeds: Map<string, number>;
   match: Match;
   x: number;
   y: number;
+  /** Card width; wider in present mode. */
+  width: number;
   onPick: (teamId: string) => void;
 }
 
-export function MatchCard({ bracket, match, x, y, onPick }: Props) {
+export function MatchCard({ bracket, seeds, match, x, y, width, onPick }: Props) {
   const bye = isByeMatch(match);
   const playable = isPlayable(match);
   // Time-trial times explain the seeding, so they only appear in the opening round.
@@ -42,17 +46,21 @@ export function MatchCard({ bracket, match, x, y, onPick }: Props) {
         title={playable ? `${team.name}: click to ${match.winner === slot ? 'undo the result' : 'mark as winner'}` : team.name}
         onClick={() => onPick(slot)}
       >
-        <span className="seed">{team.seed}</span>
+        <span className="seed">{seeds.get(slot) ?? team.seed}</span>
         <span className="name">{team.name}</span>
         {showTime && <span className="time">{formatTime(team.timeMs)}</span>}
       </button>
     );
   };
 
+  // The gradient ring turns while a race is ready to run and stops once it's decided; it waits,
+  // dimmed, for teams still to come. Byes have none.
+  const ring = bye ? '' : match.winner ? 'ring ring--still' : playable ? 'ring' : 'ring ring--idle';
+
   return (
     <div
-      className={`match ${bye ? 'match--bye' : ''} ${match.winner && !bye ? 'match--decided' : ''}`}
-      style={{ left: x, top: y, width: CARD_W, height: CARD_H }}
+      className={`match ${ring} ${bye ? 'match--bye' : ''} ${match.winner && !bye ? 'match--decided' : ''}`}
+      style={{ left: x, top: y, width, height: CARD_H }}
     >
       {row(match.a, 0)}
       {row(match.b, 1)}

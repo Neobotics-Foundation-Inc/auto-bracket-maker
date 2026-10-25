@@ -2,6 +2,7 @@ import { sectionRoundName } from './bracket';
 import type { Bracket, Match } from './types';
 
 // Kept tight so a 64-slot bracket still scales to a legible size on one 16:9 screen.
+// Present mode widens cards (every layout takes `cardW`) to fill the projected screen.
 export const CARD_W = 232;
 export const CARD_H = 76;
 export const COL_GAP = 36;
@@ -33,6 +34,8 @@ export interface Layout {
   cards: CardBox[];
   paths: string[];
   headers: Header[];
+  /** Width of every card in this layout. */
+  cardW: number;
 }
 
 type Side = 'left' | 'right';
@@ -52,8 +55,9 @@ const elbow = (fromX: number, fromY: number, toX: number, toY: number) => {
  */
 export function layoutBracket(
   bracket: Bracket,
-  opts: { mirrored: boolean; firstRound: number; withoutFinal?: boolean },
+  opts: { mirrored: boolean; firstRound: number; withoutFinal?: boolean; cardW?: number },
 ): Layout {
+  const cw = opts.cardW ?? CARD_W;
   const { rounds } = bracket;
   const finalRound = rounds.length - 1;
   const centreFinal = !opts.withoutFinal;
@@ -69,9 +73,9 @@ export function layoutBracket(
   const outerCount = mirrored ? rounds[first].length / 2 : rounds[first].length;
   const bodyH = Math.max(outerCount * (CARD_H + ROW_GAP), extra ? MIN_BODY_H : 0);
   const height = HEADER_H + bodyH;
-  const step = CARD_W + COL_GAP;
+  const step = cw + COL_GAP;
   const columns = mirrored ? sideRounds.length * 2 + (centreFinal ? 1 : 0) : sideRounds.length;
-  const width = columns * CARD_W + (columns - 1) * COL_GAP;
+  const width = columns * cw + (columns - 1) * COL_GAP;
 
   const cards: CardBox[] = [];
   const paths: string[] = [];
@@ -79,7 +83,7 @@ export function layoutBracket(
   const centerY = (i: number, count: number) => HEADER_H + ((i + 0.5) * bodyH) / count;
 
   const placeSide = (side: Side) => {
-    const xOf = (col: number) => (side === 'left' ? col * step : width - CARD_W - col * step);
+    const xOf = (col: number) => (side === 'left' ? col * step : width - cw - col * step);
     sideRounds.forEach((round, col) => {
       const all = rounds[round];
       const matches = !mirrored ? all : side === 'left' ? all.slice(0, all.length / 2) : all.slice(all.length / 2);
@@ -95,7 +99,7 @@ export function layoutBracket(
         // Parent is the next column on this side, or the final in the centre.
         const parentX = isLastCol ? sideRounds.length * step : xOf(col + 1);
         const parentY = isLastCol ? HEADER_H + bodyH / 2 : centerY(i >> 1, matches.length / 2);
-        paths.push(side === 'left' ? elbow(x + CARD_W, cy, parentX, parentY) : elbow(x, cy, parentX + CARD_W, parentY));
+        paths.push(side === 'left' ? elbow(x + cw, cy, parentX, parentY) : elbow(x, cy, parentX + cw, parentY));
       });
     });
   };
@@ -118,7 +122,7 @@ export function layoutBracket(
     cards.push({ match: extra, x: finalX, y });
   }
 
-  return { width, height, cards, paths, headers };
+  return { width, height, cards, paths, headers, cardW: cw };
 }
 
 /**
@@ -127,12 +131,12 @@ export function layoutBracket(
  * the size pairs off the previous winners (two lines in). Rounds before `firstRound` are
  * hidden, and with `withoutFinal` so is the losers final (shown elsewhere).
  */
-export function layoutLosers(bracket: Bracket, firstRound = 0, { withoutFinal = false } = {}): Layout {
+export function layoutLosers(bracket: Bracket, firstRound = 0, { withoutFinal = false, cardW: cw = CARD_W } = {}): Layout {
   const shown = withoutFinal ? bracket.losers.slice(0, -1) : bracket.losers;
   const columns = shown.slice(Math.min(Math.max(firstRound, 0), shown.length - 1));
-  const step = CARD_W + COL_GAP;
+  const step = cw + COL_GAP;
   const bodyH = Math.max(...columns.map((c) => c.length)) * (CARD_H + ROW_GAP);
-  const width = columns.length * CARD_W + (columns.length - 1) * COL_GAP;
+  const width = columns.length * cw + (columns.length - 1) * COL_GAP;
 
   const cards: CardBox[] = [];
   const paths: string[] = [];
@@ -158,7 +162,7 @@ export function layoutLosers(bracket: Bracket, firstRound = 0, { withoutFinal = 
     prevY = ys;
   });
 
-  return { width, height: HEADER_H + bodyH, cards, paths, headers };
+  return { width, height: HEADER_H + bodyH, cards, paths, headers, cardW: cw };
 }
 
 /** Double-elimination brackets up to this size fit both halves on one screen. */
@@ -187,12 +191,12 @@ function shift(layout: Layout, dy: number): Layout {
  * events. The grand final sits between the two, past their last rounds, with a line in
  * from the winners final above and the losers final below.
  */
-export function layoutCombined(bracket: Bracket): Layout {
-  const winners = shift(layoutBracket(bracket, { mirrored: false, firstRound: 0 }), SECTION_H);
+export function layoutCombined(bracket: Bracket, cw = CARD_W): Layout {
+  const winners = shift(layoutBracket(bracket, { mirrored: false, firstRound: 0, cardW: cw }), SECTION_H);
   const grandLabelY = SECTION_H + winners.height + GRAND_PAD;
   const grandY = grandLabelY + EXTRA_LABEL_H;
   const losersTop = grandY + CARD_H + GRAND_PAD;
-  const losers = shift(layoutLosers(bracket), losersTop + SECTION_H);
+  const losers = shift(layoutLosers(bracket, 0, { cardW: cw }), losersTop + SECTION_H);
   const grandX = Math.max(winners.width, losers.width) + COL_GAP;
   const grandCy = grandY + CARD_H / 2;
 
@@ -200,11 +204,12 @@ export function layoutCombined(bracket: Bracket): Layout {
     cards.find((c) => c.match.section === section && c.match.round === round)!;
   const final = lastCard(winners.cards, 'main', bracket.rounds.length - 1);
   const losersFinal = lastCard(losers.cards, 'losers', bracket.losers.length - 1);
-  const into = (from: CardBox) => elbow(from.x + CARD_W, from.y + CARD_H / 2, grandX, grandCy);
+  const into = (from: CardBox) => elbow(from.x + cw, from.y + CARD_H / 2, grandX, grandCy);
 
   return {
-    width: grandX + CARD_W,
+    width: grandX + cw,
     height: losersTop + SECTION_H + losers.height,
+    cardW: cw,
     cards: [...winners.cards, { match: bracket.grandFinal!, x: grandX, y: grandY }, ...losers.cards],
     paths: [...winners.paths, ...losers.paths, into(final), into(losersFinal)],
     headers: [
@@ -223,12 +228,12 @@ const FINALS_GAP = 56;
  * The grand final on its own: the winners final above and the losers final below on the
  * left, both feeding the grand final on the right.
  */
-export function layoutGrandFinal(bracket: Bracket): Layout {
+export function layoutGrandFinal(bracket: Bracket, cw = CARD_W): Layout {
   const winnersFinal = bracket.rounds[bracket.rounds.length - 1][0];
   const losersFinal = bracket.losers[bracket.losers.length - 1][0];
   const topY = EXTRA_LABEL_H;
   const bottomY = topY + CARD_H + FINALS_GAP + EXTRA_LABEL_H;
-  const grandX = CARD_W + 2 * COL_GAP;
+  const grandX = cw + 2 * COL_GAP;
   const grandY = (topY + bottomY) / 2;
   const grandCy = grandY + CARD_H / 2;
   const label = (match: Match, x: number, y: number): Header => ({
@@ -239,14 +244,15 @@ export function layoutGrandFinal(bracket: Bracket): Layout {
   });
 
   return {
-    width: grandX + CARD_W,
+    width: grandX + cw,
     height: bottomY + CARD_H,
+    cardW: cw,
     cards: [
       { match: winnersFinal, x: 0, y: topY },
       { match: losersFinal, x: 0, y: bottomY },
       { match: bracket.grandFinal!, x: grandX, y: grandY },
     ],
-    paths: [topY, bottomY].map((y) => `M${CARD_W} ${y + CARD_H / 2}H${CARD_W + COL_GAP}V${grandCy}H${grandX}`),
+    paths: [topY, bottomY].map((y) => `M${cw} ${y + CARD_H / 2}H${cw + COL_GAP}V${grandCy}H${grandX}`),
     headers: [label(winnersFinal, 0, topY), label(losersFinal, 0, bottomY), label(bracket.grandFinal!, grandX, grandY)],
   };
 }

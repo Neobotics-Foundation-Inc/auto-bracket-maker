@@ -79,7 +79,7 @@ export interface EventInfo {
 }
 
 export type Theme = 'dark' | 'light';
-export type View = 'setup' | 'standings' | 'bracket' | 'podium';
+export type View = 'customize' | 'setup' | 'standings' | 'bracket' | 'podium';
 /** Which part of a double-elimination bracket the bracket view shows, when they don't fit together. */
 export type BracketPane = 'winners' | 'losers' | 'grand';
 
@@ -96,4 +96,19 @@ export interface AppState {
   firstRound: number;
   /** The same for the losers bracket view. */
   losersFirstRound: number;
+  /** The race countdown on the bracket view. */
+  timer: RaceTimer;
+}
+
+/**
+ * A race countdown. Idle shows the full duration; running counts down to `endsAt`; paused
+ * holds what was left. Times are kept as moments, not ticks, so a refresh or a background
+ * tab doesn't lose time.
+ */
+export interface RaceTimer {
+  durationMs: number;
+  /** When a running countdown reaches zero (epoch ms), or null when not running. */
+  endsAt: number | null;
+  /** Time left when paused, or null when not paused. */
+  pausedMs: number | null;
 }

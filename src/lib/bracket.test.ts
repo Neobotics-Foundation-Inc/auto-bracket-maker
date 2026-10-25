@@ -12,7 +12,7 @@ import {
   roundName,
   seedOrder,
 } from './bracket';
-import { seedTeams } from './entrants';
+import { seedTeams, shownSeeds } from './entrants';
 import { layoutBracket, layoutCombined, layoutGrandFinal, layoutLosers, showsBothBrackets } from './layout';
 import { BYE, type Bracket, type SeededTeam } from './types';
 
@@ -279,6 +279,27 @@ describe('seedTeams', () => {
       ['Tie second', 3],
       ['Slow', 4],
     ]);
+  });
+});
+
+describe('shownSeeds', () => {
+  it('gives tied times the same seed and skips past them', () => {
+    const seeds = shownSeeds([
+      { id: 'a', timeMs: 12000 },
+      { id: 'b', timeMs: 12000 },
+      { id: 'c', timeMs: 23000 },
+      { id: 'd', timeMs: 25000 },
+      { id: 'e', timeMs: 25000 },
+      { id: 'f', timeMs: 25000 },
+      { id: 'g', timeMs: 30000 },
+    ]);
+    expect([...seeds.values()]).toEqual([1, 1, 3, 4, 4, 4, 7]);
+  });
+
+  it('matches the seeds when no times tie', () => {
+    const teams = makeTeams(8);
+    const seeds = shownSeeds(teams);
+    expect(teams.every((t) => seeds.get(t.id) === t.seed)).toBe(true);
   });
 });
 

@@ -1,5 +1,5 @@
 import { useMemo, type KeyboardEvent } from 'react';
-import { normalizeName, seedTeams } from '../lib/entrants';
+import { normalizeName, seedTeams, shownSeeds } from '../lib/entrants';
 import { checkTimeParts, formatTime } from '../lib/time';
 import type { Entrant, TimeParts } from '../lib/types';
 
@@ -35,7 +35,7 @@ function moveOnSeparator(input: HTMLInputElement) {
 }
 
 export function TeamTable({ entrants, onChange }: Props) {
-  const seeds = useMemo(() => new Map(seedTeams(entrants).map((t) => [t.id, t.seed])), [entrants]);
+  const seeds = useMemo(() => shownSeeds(seedTeams(entrants)), [entrants]);
   const duplicates = useMemo(() => {
     const counts = new Map<string, number>();
     for (const e of entrants) {
