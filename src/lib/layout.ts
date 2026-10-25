@@ -4,7 +4,8 @@ import type { Bracket, Match } from './types';
 // Kept tight so a 64-slot bracket still scales to a legible size on one 16:9 screen.
 // Present mode widens cards (every layout takes `cardW`) to fill the projected screen.
 export const CARD_W = 232;
-export const CARD_H = 76;
+// Tall enough for three lines of name per team, so long names wrap instead of being cut off.
+export const CARD_H = 112;
 export const COL_GAP = 36;
 export const ROW_GAP = 10;
 export const HEADER_H = 44;

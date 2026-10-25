@@ -1312,14 +1312,15 @@ input.invalid {
   font-size: 12px;
 }
 
+/* Up to three lines, which fill a team's half of the card. */
 .team .name {
   font-size: 18px;
   font-weight: 700;
-  line-height: 1.04;
+  line-height: 1.02;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
   overflow: hidden;
   overflow-wrap: anywhere;
 }
@@ -2070,10 +2071,10 @@ button.team:disabled {
 }
 
 /* Larger type for a hall: present mode widens the cards, and the type grows into the room. */
-/* Two lines of name fill a team's half of the card exactly. */
+/* Three lines of name fill a team's half of the card. */
 .app--present .team .name {
   font-size: 19px;
-  line-height: 1;
+  line-height: 0.96;
 }
 
 .app--present .team .seed {

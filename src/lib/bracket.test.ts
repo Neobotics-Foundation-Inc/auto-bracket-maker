@@ -13,7 +13,7 @@ import {
   seedOrder,
 } from './bracket';
 import { seedTeams, shownSeeds } from './entrants';
-import { layoutBracket, layoutCombined, layoutGrandFinal, layoutLosers, showsBothBrackets } from './layout';
+import { CARD_H, layoutBracket, layoutCombined, layoutGrandFinal, layoutLosers, showsBothBrackets } from './layout';
 import { BYE, type Bracket, type SeededTeam } from './types';
 
 const makeTeams = (n: number): SeededTeam[] =>
@@ -328,8 +328,8 @@ describe('layout', () => {
         const final = layout.cards.find((c) => c.match.id === b.rounds[b.rounds.length - 1][0].id)!;
         const third = layout.cards.find((c) => c.match.id === 'third')!;
         expect(third.x).toBe(final.x);
-        expect(third.y).toBeGreaterThan(final.y + 76);
-        expect(third.y + 76).toBeLessThanOrEqual(layout.height);
+        expect(third.y).toBeGreaterThan(final.y + CARD_H);
+        expect(third.y + CARD_H).toBeLessThanOrEqual(layout.height);
       }
     }
   });
@@ -382,11 +382,11 @@ describe('layout', () => {
       const layout = layoutCombined(b);
       // Every race once, with the grand final between the winners and losers brackets.
       expect(layout.cards).toHaveLength(allMatches(b).length);
-      const winnersBottom = Math.max(...layout.cards.filter((c) => c.match.section === 'main').map((c) => c.y + 76));
+      const winnersBottom = Math.max(...layout.cards.filter((c) => c.match.section === 'main').map((c) => c.y + CARD_H));
       const losersTop = Math.min(...layout.cards.filter((c) => c.match.section === 'losers').map((c) => c.y));
       const grand = layout.cards.find((c) => c.match.section === 'grand')!;
       expect(grand.y).toBeGreaterThan(winnersBottom);
-      expect(grand.y + 76).toBeLessThan(losersTop);
+      expect(grand.y + CARD_H).toBeLessThan(losersTop);
       for (const c of layout.cards) expect(c.x + 232).toBeLessThanOrEqual(layout.width);
       expect(layout.headers.filter((h) => h.section).map((h) => h.label)).toEqual(['Winners bracket', 'Losers bracket']);
     }
