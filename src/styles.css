@@ -35,11 +35,11 @@
   --nb-beige: #f5ede4;
   --nb-beige-dark: #ebe3da;
   --nb-carbon: #1d1d27;
-  /* The event's theme colours (Customize page sets these on <html>); the Neobotics ones by default.
-     --brand is the main colour, --brand-ink the label colour on it, --brand-text the light theme's text. */
+  /* The event's theme colors (Customize page sets these on <html>); the Neobotics ones by default.
+     --brand is the main color, --brand-ink the label color on it, --brand-text the light theme's text. */
   --brand: var(--nb-red);
   --brand-ink: #ffffff;
-  /* The main colour on the light theme, deepened if needed to read on white. */
+  /* The main color on the light theme, deepened if needed to read on white. */
   --brand-light: var(--brand);
   --brand-light-ink: var(--brand-ink);
   --brand-text: var(--nb-tarmac);
@@ -331,7 +331,7 @@ input.invalid {
   align-items: center;
 }
 
-/* Wide screens: three columns, so the tabs sit in the true centre whatever the logo's width. */
+/* Wide screens: three columns, so the tabs sit in the true center whatever the logo's width. */
 @media (min-width: 900px) {
   .topbar {
     display: grid;
@@ -637,7 +637,7 @@ input.invalid {
   font-weight: 600;
 }
 
-/* Theme colours: palette chips, a picker per colour, and a preview on each theme. */
+/* Theme colors: palette chips, a picker per color, and a preview on each theme. */
 .palettes {
   display: flex;
   flex-wrap: wrap;
@@ -1078,7 +1078,7 @@ input.invalid {
   }
 }
 
-/* Round − and + the same height as the time box, the sign centred. */
+/* Round − and + the same height as the time box, the sign centered. */
 .race-timer__step {
   justify-content: center;
   width: 40px;
@@ -1094,7 +1094,7 @@ input.invalid {
   color: var(--muted);
 }
 
-/* The last ten seconds, and time up, in the main colour so the whole hall notices. */
+/* The last ten seconds, and time up, in the main color so the whole hall notices. */
 .race-timer--warning .race-timer__time {
   color: var(--accent);
   animation: race-timer-pulse 1s ease-in-out infinite;
@@ -1636,11 +1636,11 @@ button.team:disabled {
 
 /* ---------- Gradient rings (bracket and standings) ---------- */
 
-/* An animated gradient border in the event's theme colours: a thin conic-gradient ring, cut out
-   with a mask, turning round the card over a softly glowing bloom of the same colours. A race ready to
+/* An animated gradient border in the event's theme colors: a thin conic-gradient ring, cut out
+   with a mask, turning round the card over a softly glowing bloom of the same colors. A race ready to
    run turns; a decided one stops, so what's left to race shows at a glance; one still waiting for
-   its teams is dimmed. The standings turn slowly. Colours: the main colour, a pale tint of it and
-   the text colour (lightened on the dark theme so it shows). */
+   its teams is dimmed. The standings turn slowly. Colors: the main color, a pale tint of it and
+   the text color (lightened on the dark theme so it shows). */
 @property --ring-a {
   syntax: '<angle>';
   inherits: false;
@@ -1658,7 +1658,7 @@ button.team:disabled {
   --ring-2: color-mix(in oklab, var(--accent), white 45%);
   --ring-3: var(--brand-text);
   /* Fainter and tighter by day: on pale glass a strong bloom tints the cards, washing out the
-     grey times, and in a packed first round neighbouring blooms run together into one band. */
+     gray times, and in a packed first round neighboring blooms run together into one band. */
   --bloom-hi: 0.3;
   --bloom-lo: 0.18;
   --bloom-still: 0.12;
@@ -1849,7 +1849,7 @@ button.team:disabled {
   background: rgb(245 237 228 / 0.72);
 }
 
-/* Liquid glass, as in iPhone app folders: a clear, strongly blurred and colour-boosted body that
+/* Liquid glass, as in iPhone app folders: a clear, strongly blurred and color-boosted body that
    lets the scene glow through, a bright rim catching the light along the top edge and a softer
    one along the bottom, a faint inner glow, large soft corners and a gentle drop shadow. */
 .app--day {
@@ -1900,7 +1900,7 @@ button.team:disabled {
   border-radius: 22px;
 }
 
-/* The winner's step keeps its glow in the main colour, over the glass. */
+/* The winner's step keeps its glow in the main color, over the glass. */
 .app--day .podium-place--1 .podium-place__step {
   border: 2px solid var(--accent);
   border-bottom: 0;
@@ -1969,7 +1969,7 @@ button.team:disabled {
 }
 
 /* Round names, the toolbar's captions, the podium's team names and the present-mode timer stand
-   straight on the scene, so by day they're a deeper shade of the text colour, solid rather than
+   straight on the scene, so by day they're a deeper shade of the text color, solid rather than
    the plain or faded one. */
 .app--day {
   --scene-ink: color-mix(in oklab, var(--brand-text), black 35%);
@@ -2244,7 +2244,7 @@ button.team:disabled {
     color: var(--muted);
   }
 
-  /* Hover sticks after a tap on touch screens, so only the active tab is coloured. */
+  /* Hover sticks after a tap on touch screens, so only the active tab is colored. */
   .tabs button:hover:not(:disabled) {
     color: var(--muted);
   }

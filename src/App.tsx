@@ -57,10 +57,10 @@ export default function App() {
   };
   // A logo saved before the current processing (say, with its white background still on) is redone once.
   useEffect(() => {
-    let cancelled = false;
+    let canceled = false;
     upgradeLogo(loadBranding())
       .then((upgraded) => {
-        if (upgraded && !cancelled) {
+        if (upgraded && !canceled) {
           const next = { ...loadBranding(), ...upgraded };
           setBranding(next);
           saveBranding(next);
@@ -68,7 +68,7 @@ export default function App() {
       })
       .catch(() => {});
     return () => {
-      cancelled = true;
+      canceled = true;
     };
   }, []);
   const [present, setPresent] = useState(false);
@@ -99,7 +99,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
-  // The event's theme colours; without them the stylesheet's Neobotics colours apply.
+  // The event's theme colors; without them the stylesheet's Neobotics colors apply.
   const colors = branding.colors;
   useEffect(() => {
     const root = document.documentElement.style;

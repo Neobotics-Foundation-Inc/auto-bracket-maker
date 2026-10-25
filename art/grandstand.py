@@ -1,7 +1,7 @@
 """
 Neobotics grandstand world: a grandstand beside a race track, in the style of the Neobotics
 garage render (near-black navy field, cool-white LED panels, Neobotics-red LED strips, glossy
-dark floor, light grey structure, red-rimmed tyres). The same scene renders at night (the dark
+dark floor, light gray structure, red-rimmed tires). The same scene renders at night (the dark
 theme's background) or by day (the light theme's).
 
 Run: blender -b --factory-startup --python art/grandstand.py -- <out_dir> <mode> [exposure] [light] [time]
@@ -83,13 +83,13 @@ links.new(noise.outputs["Fac"], bump.inputs["Height"])
 links.new(bump.outputs["Normal"], nodes["Principled BSDF"].inputs["Normal"])
 
 concrete = material("Concrete", (0.05, 0.055, 0.065), rough=0.7)
-structure = material("Structure", (0.55, 0.56, 0.58), rough=0.45, metal=0.3)  # garage's light grey poles
+structure = material("Structure", (0.55, 0.56, 0.58), rough=0.45, metal=0.3)  # garage's light gray poles
 seat_mat = material("Seat", (0.025, 0.027, 0.034), rough=0.4)
 seat_red = material("SeatRed", (0.25, 0.0, 0.01), rough=0.4)
 roof_mat = material("Roof", (0.03, 0.032, 0.04), rough=0.6)
 paint_white = material("LineWhite", (0.75, 0.76, 0.78), rough=0.5)
-kerb_red = material("KerbRed", (0.45, 0.0, 0.012), rough=0.5)
-tyre = material("Tyre", (0.012, 0.012, 0.014), rough=0.85)
+curb_red = material("CurbRed", (0.45, 0.0, 0.012), rough=0.5)
+tire = material("Tire", (0.012, 0.012, 0.014), rough=0.85)
 rim_red = material("RimRed", (0.7, 0.02, 0.02), rough=0.35, metal=0.4, emit=NB_RED, strength=0.15)
 led_white = material("LEDWhite", (1, 1, 1), emit=COOL_WHITE, strength=14.0 * (DAY_LED if DAY else 1))
 led_panel = material("LEDPanel", (1, 1, 1), emit=COOL_WHITE, strength=6.0 * (DAY_LED if DAY else 1))
@@ -102,7 +102,7 @@ TRACK_W = 13.0
 TURN_Y = 138.0
 LENGTH = TURN_Y + 10
 box("Ground", (220, 260, 0.1), (0, 70, -0.05), asphalt)
-# White track-limit lines at both edges (F1 circuits have no centre line).
+# White track-limit lines at both edges (F1 circuits have no center line).
 for x in (-TRACK_W / 2, TRACK_W / 2):
     box(f"Edge{x}", (0.18, LENGTH, 0.012), (x, LENGTH / 2 - 10, 0.006), paint_white)
 # The start line, under the gantry.
@@ -131,15 +131,15 @@ for name, x in (("StandWall", WALL_X), ("PitWall", PIT_WALL_X)):
 
 # ---------------------------------------------------------------- the turn at the end of the straight
 # A 90° left-hander, as at the end of an F1 pit straight. The lines, walls, LED strips and catch
-# fences follow the curve round onto a short exit straight; red and white kerbs mark the apex and
+# fences follow the curve round onto a short exit straight; red and white curbs mark the apex and
 # the exit, and a red and white barrier lines the outside of the corner so the turn reads from the grid.
-TURN_R = 28.0  # of the track's centre line
+TURN_R = 28.0  # of the track's center line
 EXIT_LEN = 70.0
 turn_c = Vector((-TURN_R, TURN_Y, 0))
 
 
 def arc_band(name, r_in, r_out, z0, z1, mat, a0=0.0, a1=math.pi / 2, steps=48):
-    """A solid band between two radii round the turn's centre, from angle a0 to a1: 0 is the end
+    """A solid band between two radii round the turn's center, from angle a0 to a1: 0 is the end
     of the straight, π/2 the start of the exit straight."""
     bm = bmesh.new()
     rings = []
@@ -189,7 +189,7 @@ for side, sign in (("In", -1), ("Out", 1)):
     array(post, int(EXIT_LEN / 4), (-4.0, 0, 0))
 
 
-def striped_arc(name, r_in, r_out, height, a0, a1, block, first=kerb_red, second=paint_white, z0=0.0):
+def striped_arc(name, r_in, r_out, height, a0, a1, block, first=curb_red, second=paint_white, z0=0.0):
     """Alternating blocks of two materials between two radii, each about `block` long."""
     count = max(2, round((r_in + r_out) / 2 * (a1 - a0) / block))
     step = (a1 - a0) / count
@@ -198,10 +198,10 @@ def striped_arc(name, r_in, r_out, height, a0, a1, block, first=kerb_red, second
                  a0 + k * step, a0 + (k + 1) * step, steps=4)
 
 
-# Kerbs on the apex (inside) and the exit (outside), and the barrier along the outside wall.
+# Curbs on the apex (inside) and the exit (outside), and the barrier along the outside wall.
 inner_edge, outer_edge = TURN_R - TRACK_W / 2, TURN_R + TRACK_W / 2
-striped_arc("ApexKerb", inner_edge - 1.0, inner_edge, 0.06, math.pi * 0.12, math.pi * 0.38, 1.4)
-striped_arc("ExitKerb", outer_edge, outer_edge + 0.8, 0.06, math.pi * 0.3, math.pi / 2, 1.4)
+striped_arc("ApexCurb", inner_edge - 1.0, inner_edge, 0.06, math.pi * 0.12, math.pi * 0.38, 1.4)
+striped_arc("ExitCurb", outer_edge, outer_edge + 0.8, 0.06, math.pi * 0.3, math.pi / 2, 1.4)
 striped_arc("CornerBarrier", TURN_R + WALL_X - 0.75, TURN_R + WALL_X - 0.3, 1.0, 0.0, math.pi / 2, 2.0)
 
 # ---------------------------------------------------------------- grandstand
@@ -224,7 +224,7 @@ for t in range(TIERS):
 back_x = STAND_X + TIERS * TREAD + 0.3
 box("BackWall", (0.6, stand_len, 13.5), (back_x, (STAND_Y0 + STAND_Y1) / 2, 6.75), concrete)
 
-# Roof: cantilevered slab tilting up towards the track, on light grey columns.
+# Roof: cantilevered slab tilting up towards the track, on light gray columns.
 ROOF_H = 14.5
 roof_depth = TIERS * TREAD + 4.5
 roof_cx = STAND_X + roof_depth / 2 - 3.0
@@ -276,7 +276,7 @@ for k in range(5):
     box(f"TurnColumn{k}", (0.45, 0.45, ROOF_H), (p.x, p.y, ROOF_H / 2), structure)
 
 # ---------------------------------------------------------------- start gantry (F1 style)
-# A grey steel lattice truss across the track on two braced pylons, carrying the FIA start
+# A gray steel lattice truss across the track on two braced pylons, carrying the FIA start
 # light cluster in the middle: five columns of four hooded lamps facing the grid, the lower
 # pair of each lit red (the moment before lights out). Repeater lights on each pylon. No branding.
 truss_mat = material("Truss", (0.3, 0.31, 0.33), rough=0.4, metal=0.6)
@@ -354,7 +354,7 @@ def light_cluster(name, cx, cz, columns, rows, lit_rows, pitch, lamp_r, y):
             box(f"{name}Hood{c}{r}", (lamp_r * 2.4, 0.16, 0.025), (x, y - 0.27, z + lamp_r + 0.03), housing)
 
 
-# The main cluster hangs on the front of the truss, centred over the track.
+# The main cluster hangs on the front of the truss, centered over the track.
 light_cluster("StartLights", 0.0, (CHORD_LO + CHORD_HI) / 2, columns=5, rows=4, lit_rows=(2, 3),
               pitch=0.46, lamp_r=0.16, y=FRONT - 0.15)
 # Repeaters on each pylon, lower down, for the cars further back on the grid.
@@ -372,7 +372,7 @@ glow.data.shadow_soft_size = 0.8
 # As at Monza: team stands on the pit wall, the fast lane and the working lane, then a row of lit
 # garages, each with an overhead rig reaching out over its pit box, under hospitality floors
 # behind a mirrored glass front that leans out over the lane.
-epoxy = material("Epoxy", (0.2, 0.21, 0.23), rough=0.3, coat=0.3)  # light grey garage and working-lane floor
+epoxy = material("Epoxy", (0.2, 0.21, 0.23), rough=0.3, coat=0.3)  # light gray garage and working-lane floor
 glass = material("Glass", (0.05, 0.06, 0.08), rough=0.03, metal=0.85)
 PIT_LINE_X = -15.0  # between the fast lane and the working lane
 GARAGE_X = -20.4  # the garage fronts
@@ -397,11 +397,11 @@ def join(objs, name):
     return obj
 
 
-def tyre_stack(x, y, n):
+def tire_stack(x, y, n):
     for k in range(n):
         bpy.ops.mesh.primitive_torus_add(major_radius=0.32, minor_radius=0.14, location=(x, y, 0.14 + k * 0.28))
         t = bpy.context.active_object
-        t.data.materials.append(tyre)
+        t.data.materials.append(tire)
         bpy.ops.object.shade_smooth()
         bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.2, location=(x, y, 0.14 + k * 0.28))
         r = bpy.context.active_object
@@ -449,15 +449,15 @@ for i in range(BAYS // 2):
 # Lanes: the line between them, a red band beside it, and a box marked out in front of each garage.
 box("WorkingLane", (PIT_LINE_X - GARAGE_X, pit_len, 0.01), ((PIT_LINE_X + GARAGE_X) / 2, pit_cy, 0.005), epoxy)
 box("PitLine", (0.18, pit_len, 0.013), (PIT_LINE_X, pit_cy, 0.0065), paint_white)
-box("PitBand", (0.5, pit_len, 0.012), (PIT_LINE_X + 0.45, pit_cy, 0.006), kerb_red)
+box("PitBand", (0.5, pit_len, 0.012), (PIT_LINE_X + 0.45, pit_cy, 0.006), curb_red)
 for b in range(BAYS):
     y = PIT_Y0 + b * BAY + BAY / 2
     for dy in (-1.6, 1.6):
         box(f"PitBox{b}{dy}", (4.2, 0.14, 0.013), ((PIT_LINE_X + GARAGE_X) / 2, y + dy, 0.0065), paint_white)
     pit_rig(f"PitRig{b}", y)
-    # Two sets of tyres against the back wall of each garage.
+    # Two sets of tires against the back wall of each garage.
     for dy in (-1.4, 1.4):
-        tyre_stack(garage_back + 0.9, y + dy, 4)
+        tire_stack(garage_back + 0.9, y + dy, 4)
 
 # Garages: epoxy floors, dividing walls, a dark back wall with a red LED line, white LED panels in
 # the ceiling and pillars between the doors.
@@ -721,7 +721,7 @@ if DAY:
         plug(noise.inputs[name], v)
     density = noise.outputs["Fac"]
     cover = maths("MULTIPLY", remap(density, 0.49, 0.6), remap(elevation, 0.015, 0.12))
-    # Thick middles a little greyer than the sunlit edges.
+    # Thick middles a little grayer than the sunlit edges.
     shade = remap(density, 0.56, 0.85, 1.0, 0.74)
     clouds = emit((1.0, 1.0, 1.0), maths("MULTIPLY", shade, 2.4))
     painted = mix(cover, painted, clouds)

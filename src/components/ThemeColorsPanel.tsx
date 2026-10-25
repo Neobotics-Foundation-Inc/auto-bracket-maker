@@ -2,19 +2,19 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { inkOn, isHex, NEOBOTICS_COLORS, onLight, PALETTES, readabilityWarnings, type ThemeColors } from '../lib/colors';
 
 interface Props {
-  /** The event's colours, or null for the Neobotics ones. */
+  /** The event's colors, or null for the Neobotics ones. */
   colors: ThemeColors | null;
   onChange: (colors: ThemeColors | null) => void;
 }
 
 const FIELDS: { key: keyof ThemeColors; label: string; detail: string }[] = [
-  { key: 'main', label: 'Main colour', detail: 'Buttons, the active tab, highlights, winners and seed badges.' },
-  { key: 'text', label: 'Text colour', detail: 'Headings and team names in the light theme.' },
+  { key: 'main', label: 'Main color', detail: 'Buttons, the active tab, highlights, winners and seed badges.' },
+  { key: 'text', label: 'Text color', detail: 'Headings and team names in the light theme.' },
 ];
 
 const same = (a: ThemeColors, b: ThemeColors) => a.main.toLowerCase() === b.main.toLowerCase() && a.text.toLowerCase() === b.text.toLowerCase();
 
-/** One colour: the browser's picker plus a hex box, which applies once it holds a full #rrggbb. */
+/** One color: the browser's picker plus a hex box, which applies once it holds a full #rrggbb. */
 function ColorField({ label, detail, value, onChange }: { label: string; detail: string; value: string; onChange: (hex: string) => void }) {
   const [text, setText] = useState(value);
   useEffect(() => setText(value), [value]);
@@ -46,7 +46,7 @@ export function ThemeColorsPanel({ colors, onChange }: Props) {
   const current = colors ?? NEOBOTICS_COLORS;
   const palette = PALETTES.find((p) => same(p.colors, current));
   const warnings = readabilityWarnings(current);
-  // The preview sets its own colour variables, so it shows the choice on both themes at once.
+  // The preview sets its own color variables, so it shows the choice on both themes at once.
   const previewVars = {
     '--brand': current.main,
     '--brand-ink': inkOn(current.main),
@@ -61,7 +61,7 @@ export function ThemeColorsPanel({ colors, onChange }: Props) {
     <section className="panel">
       <div className="panel-head">
         <h2>
-          Theme colours <span className="count">{colors ? (palette?.name ?? 'Custom') : 'Neobotics colours'}</span>
+          Theme colors <span className="count">{colors ? (palette?.name ?? 'Custom') : 'Neobotics colors'}</span>
         </h2>
         <div className="actions">
           <button className="btn btn-quiet" disabled={!colors} onClick={() => onChange(null)}>
@@ -70,7 +70,7 @@ export function ThemeColorsPanel({ colors, onChange }: Props) {
         </div>
       </div>
 
-      <div className="palettes" role="radiogroup" aria-label="Colour palettes">
+      <div className="palettes" role="radiogroup" aria-label="Color palettes">
         {PALETTES.map((p) => (
           <button
             key={p.name}

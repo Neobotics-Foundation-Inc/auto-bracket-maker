@@ -1,4 +1,4 @@
-/** An event's theme colours, as #rrggbb. */
+/** An event's theme colors, as #rrggbb. */
 export interface ThemeColors {
   /** Buttons, the active tab, highlights, winners and seed badges. */
   main: string;
@@ -35,22 +35,22 @@ export function luminance(hex: string) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-/** WCAG contrast ratio between two colours, 1 to 21. */
+/** WCAG contrast ratio between two colors, 1 to 21. */
 export function contrast(a: string, b: string) {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
 
 /**
- * The label colour on a main-colour button: white, as on the Neobotics red, unless white
+ * The label color on a main-color button: white, as on the Neobotics red, unless white
  * would fall below 3:1 (the bar for bold UI text), then near-black.
  */
 export const inkOn = (hex: string) => (contrast(hex, '#ffffff') >= 3 ? '#ffffff' : '#14161c');
 
 /**
- * The main colour as used on the light theme, where it also colours text on white (the
+ * The main color as used on the light theme, where it also colors text on white (the
  * active tab, links): deepened towards black just enough to reach 3:1 against white.
- * Colours that already reach it are unchanged.
+ * Colors that already reach it are unchanged.
  */
 export function onLight(hex: string): string {
   const [r, g, b] = channels(hex);
@@ -61,12 +61,12 @@ export function onLight(hex: string): string {
   return '#000000';
 }
 
-/** Warnings for colours that would be hard to read, empty when both are fine. */
+/** Warnings for colors that would be hard to read, empty when both are fine. */
 export function readabilityWarnings({ main, text }: ThemeColors): string[] {
   const warnings: string[] = [];
   // Large text and UI parts need 3:1; body text needs 4.5:1 (WCAG AA).
-  if (contrast(main, '#000000') < 3) warnings.push('The main colour is very dark: highlights will be hard to see in the dark theme.');
-  if (contrast(main, '#ffffff') < 1.6) warnings.push('The main colour is very light: the light theme uses a deeper shade of it so it stays readable.');
-  if (contrast(text, '#ffffff') < 4.5) warnings.push('The text colour is too light to read comfortably on the light theme’s white panels.');
+  if (contrast(main, '#000000') < 3) warnings.push('The main color is very dark: highlights will be hard to see in the dark theme.');
+  if (contrast(main, '#ffffff') < 1.6) warnings.push('The main color is very light: the light theme uses a deeper shade of it so it stays readable.');
+  if (contrast(text, '#ffffff') < 4.5) warnings.push('The text color is too light to read comfortably on the light theme’s white panels.');
   return warnings;
 }

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { contrast, inkOn, isHex, luminance, NEOBOTICS_COLORS, onLight, PALETTES, readabilityWarnings } from './colors';
 
-describe('colour helpers', () => {
-  it('checks hex colours', () => {
+describe('color helpers', () => {
+  it('checks hex colors', () => {
     expect(isHex('#ff0033')).toBe(true);
     expect(isHex('#FF0033')).toBe(true);
     expect(isHex('ff0033')).toBe(false);
@@ -17,7 +17,7 @@ describe('colour helpers', () => {
     expect(contrast('#777777', '#777777')).toBeCloseTo(1, 6);
   });
 
-  it('picks the readable label colour for a button', () => {
+  it('picks the readable label color for a button', () => {
     expect(inkOn('#ff0033')).toBe('#ffffff');
     expect(inkOn('#f5b700')).toBe('#14161c');
     expect(inkOn('#1f6bff')).toBe('#ffffff');
@@ -25,12 +25,12 @@ describe('colour helpers', () => {
 });
 
 describe('onLight', () => {
-  it('leaves colours that already read on white alone', () => {
+  it('leaves colors that already read on white alone', () => {
     expect(onLight('#ff0033')).toBe('#ff0033');
     expect(onLight('#1f6bff')).toBe('#1f6bff');
   });
 
-  it('deepens light colours just enough to read on white', () => {
+  it('deepens light colors just enough to read on white', () => {
     const gold = onLight('#f5b700');
     expect(contrast(gold, '#ffffff')).toBeGreaterThanOrEqual(3);
     expect(contrast(gold, '#ffffff')).toBeLessThan(3.6);
@@ -43,7 +43,7 @@ describe('readabilityWarnings', () => {
     for (const p of PALETTES) expect(readabilityWarnings(p.colors), p.name).toEqual([]);
   });
 
-  it('flags colours that would be hard to read', () => {
+  it('flags colors that would be hard to read', () => {
     expect(readabilityWarnings({ main: '#0a0a12', text: NEOBOTICS_COLORS.text })).toHaveLength(1);
     expect(readabilityWarnings({ main: '#fafafa', text: NEOBOTICS_COLORS.text })).toHaveLength(1);
     expect(readabilityWarnings({ main: NEOBOTICS_COLORS.main, text: '#cccccc' })).toHaveLength(1);

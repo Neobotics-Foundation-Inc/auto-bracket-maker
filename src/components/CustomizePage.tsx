@@ -54,8 +54,8 @@ export function CustomizePage({ branding, onBrandingChange, onNext }: Props) {
       <section className="panel">
         <h2>Customize</h2>
         <p className="muted customize-intro">
-          Add your event’s logo and colours. The logo replaces the Neobotics logo in the top bar, adjusted to suit each
-          theme, and the colours run through the whole app. Skip this to use the Neobotics look.
+          Add your event’s logo and colors. The logo replaces the Neobotics logo in the top bar, adjusted to suit each
+          theme, and the colors run through the whole app. Skip this to use the Neobotics look.
         </p>
         {notice && <p className={`notice notice--${notice.kind}`}>{notice.text}</p>}
       </section>

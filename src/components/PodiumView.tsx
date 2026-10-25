@@ -58,7 +58,7 @@ function FittedName({ name, maxSize }: { name: string; maxSize: number }) {
   );
 }
 
-/** First, second and third on a podium, with the winner on the centre step. */
+/** First, second and third on a podium, with the winner on the center step. */
 export function PodiumView({ bracket }: Props) {
   const result = podium(bracket);
   const seeds = shownSeeds(Object.values(bracket.teams));

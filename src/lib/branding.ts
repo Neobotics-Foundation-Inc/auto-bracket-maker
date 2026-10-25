@@ -1,6 +1,6 @@
 import { isHex, type ThemeColors } from './colors';
 
-/** An event's own logo and colours, replacing the Neobotics ones. Logos are data URLs. */
+/** An event's own logo and colors, replacing the Neobotics ones. Logos are data URLs. */
 export interface Branding {
   /** The logo as shown on the dark theme's black bar. */
   logoDark: string | null;
@@ -8,7 +8,7 @@ export interface Branding {
   logoLight: string | null;
   /** Which version of the logo processing made these; older logos are processed again. */
   version?: number;
-  /** The event's theme colours; null for the Neobotics colours. */
+  /** The event's theme colors; null for the Neobotics colors. */
   colors?: ThemeColors | null;
 }
 
@@ -62,10 +62,10 @@ const smoothstep = (edge0: number, edge1: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
-const colourDistance = (data: Uint8ClampedArray, i: number, [r, g, b]: number[]) =>
+const colorDistance = (data: Uint8ClampedArray, i: number, [r, g, b]: number[]) =>
   Math.hypot(data[i] - r, data[i + 1] - g, data[i + 2] - b);
 
-// A border pixel within NEAR of the background colour counts as background.
+// A border pixel within NEAR of the background color counts as background.
 const NEAR = 40;
 // Within NOISE of the background is always background (compression specks, paper texture).
 const NOISE = 4;
@@ -74,7 +74,7 @@ const NOISE = 4;
 const MIN_INK = 12;
 const MAX_INK = 96;
 // Below this, the artwork is light on light (a white wordmark on white): letter bodies are the
-// background's colour and only their outlines stand out, so the bodies are filled by shape.
+// background's color and only their outlines stand out, so the bodies are filled by shape.
 const FAINT_INK = 40;
 
 /** Grows a mask by one pixel in every direction. */
@@ -96,7 +96,7 @@ function dilate(mask: Uint8Array, width: number, height: number): Uint8Array {
 }
 
 /**
- * Finds background-coloured areas inside an odd number of outlines: the body of a letter
+ * Finds background-colored areas inside an odd number of outlines: the body of a letter
  * drawn as a light outline on a light background is inside one, while the background
  * (reached from the border) is inside none and the hole of an "o" inside two. Outlines join
  * diagonally; background areas only through edges.
@@ -133,13 +133,13 @@ export function enclosedAreas(isOutline: Uint8Array, width: number, height: numb
     }
   }
 
-  const neighbours = kinds.map(() => new Set<number>());
+  const neighbors = kinds.map(() => new Set<number>());
   for (let p = 0; p < count; p++) {
     const x = p % width;
     for (const q of [x < width - 1 ? p + 1 : -1, p + width < count ? p + width : -1]) {
       if (q >= 0 && component[q] !== component[p]) {
-        neighbours[component[p]].add(component[q]);
-        neighbours[component[q]].add(component[p]);
+        neighbors[component[p]].add(component[q]);
+        neighbors[component[q]].add(component[p]);
       }
     }
   }
@@ -163,7 +163,7 @@ export function enclosedAreas(isOutline: Uint8Array, width: number, height: numb
   for (let head = 0; head < queue.length; head++) {
     const id = queue[head];
     // Stepping into an outline crosses it; stepping out of one into an area doesn't.
-    for (const n of neighbours[id]) reach(n, kinds[n] ? depth[id] + 1 : depth[id]);
+    for (const n of neighbors[id]) reach(n, kinds[n] ? depth[id] + 1 : depth[id]);
   }
 
   const inside = new Uint8Array(count);
@@ -175,14 +175,14 @@ export function enclosedAreas(isOutline: Uint8Array, width: number, height: numb
 }
 
 /**
- * Makes a logo's solid background transparent, in place. The background colour is taken
- * from the border; if the border isn't one solid colour (a photo, or already transparent),
+ * Makes a logo's solid background transparent, in place. The background color is taken
+ * from the border; if the border isn't one solid color (a photo, or already transparent),
  * nothing changes. Returns whether a background was removed.
  *
- * Each pixel's opacity follows its distance from the background colour, scaled to how far
- * the logo's own grey tones stand off it. Black lettering on white stands far off; a white
+ * Each pixel's opacity follows its distance from the background color, scaled to how far
+ * the logo's own gray tones stand off it. Black lettering on white stands far off; a white
  * wordmark placed on white stands off by only a few levels, and is lifted to full opacity
- * rather than cleared with the background. Areas of background colour inside the artwork
+ * rather than cleared with the background. Areas of background color inside the artwork
  * (the inside of an "O") are cleared too.
  */
 export function removeBackground(data: Uint8ClampedArray, width: number, height: number): boolean {
@@ -197,17 +197,17 @@ export function removeBackground(data: Uint8ClampedArray, width: number, height:
     return values[values.length >> 1];
   };
   const bg = [channel(0), channel(1), channel(2)];
-  const matching = opaque.filter((p) => colourDistance(data, p * 4, bg) < NEAR).length;
+  const matching = opaque.filter((p) => colorDistance(data, p * 4, bg) < NEAR).length;
   if (matching < opaque.length * 0.85) return false;
 
-  // How far the artwork's grey tones stand off the background: most of its neutral pixels
+  // How far the artwork's gray tones stand off the background: most of its neutral pixels
   // should end up fully opaque.
   const count = width * height;
   const distance = new Float32Array(count);
   const neutralInk: number[] = [];
   for (let p = 0; p < count; p++) {
     const i = p * 4;
-    distance[p] = colourDistance(data, i, bg);
+    distance[p] = colorDistance(data, i, bg);
     const chroma = Math.max(data[i], data[i + 1], data[i + 2]) - Math.min(data[i], data[i + 1], data[i + 2]);
     if (distance[p] > NOISE && chroma < 25) neutralInk.push(distance[p]);
   }
@@ -216,7 +216,7 @@ export function removeBackground(data: Uint8ClampedArray, width: number, height:
   const clear = Math.max(NOISE, ink * 0.2);
   let filled: Uint8Array | null = null;
   if (ink < FAINT_INK) {
-    // Only the faint grey outlines count: solid coloured artwork has holes, not bodies.
+    // Only the faint gray outlines count: solid colored artwork has holes, not bodies.
     const outline = new Uint8Array(count);
     // Low, so the faintest stretches of outline still join up around each letter.
     const edge = clear + (ink - clear) * 0.3;
@@ -249,7 +249,7 @@ export function removeBackground(data: Uint8ClampedArray, width: number, height:
 
 /**
  * Fills see-through specks and patches inside solid areas, in place: opacity averaged over
- * a small neighbourhood lifts pixels that sit mostly among solid ones. Separate letters
+ * a small neighborhood lifts pixels that sit mostly among solid ones. Separate letters
  * don't join, since the gap between them is mostly see-through.
  */
 export function fillSpecks(alpha: Float32Array, width: number, height: number, radius = 2) {
@@ -275,8 +275,8 @@ export function fillSpecks(alpha: Float32Array, width: number, height: number, r
 
 /**
  * Adapts a transparent logo to one theme's bar, in place, as the Neobotics logo pair does:
- * black or grey lettering turns white on the dark bar, white lettering turns Tarmac Blue on
- * the light bar, and coloured parts (the red mark) stay as they are.
+ * black or gray lettering turns white on the dark bar, white lettering turns Tarmac Blue on
+ * the light bar, and colored parts (the red mark) stay as they are.
  */
 export function adaptLogo(data: Uint8ClampedArray, tone: 'dark' | 'light') {
   for (let i = 0; i < data.length; i += 4) {
@@ -286,7 +286,7 @@ export function adaptLogo(data: Uint8ClampedArray, tone: 'dark' | 'light') {
     const b = data[i + 2] / 255;
     const chroma = Math.max(r, g, b) - Math.min(r, g, b);
     const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-    // How neutral (grey) the pixel is: fully for greys, not at all for clear colours.
+    // How neutral (gray) the pixel is: fully for grays, not at all for clear colors.
     const neutral = 1 - smoothstep(0.12, 0.28, chroma);
     if (neutral === 0) continue;
     if (tone === 'dark' && lum < 0.5) {

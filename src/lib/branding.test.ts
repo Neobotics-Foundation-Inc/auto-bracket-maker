@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { adaptLogo, removeBackground } from './branding';
 
-/** A size×size image filled with one colour. */
+/** A size×size image filled with one color. */
 function solid(size: number, [r, g, b]: number[]) {
   const data = new Uint8ClampedArray(size * size * 4);
   for (let i = 0; i < data.length; i += 4) data.set([r, g, b, 255], i);
@@ -34,7 +34,7 @@ describe('removeBackground', () => {
   it('keeps faint, near-white lettering instead of clearing it with the background', () => {
     const w = 20;
     const data = solid(w, [255, 255, 255]);
-    // A light grey bar, 3 pixels wide, as a wordmark only 20 levels off white.
+    // A light gray bar, 3 pixels wide, as a wordmark only 20 levels off white.
     for (let y = 4; y < 16; y++) for (let x = 8; x < 11; x++) data.set([235, 235, 235, 255], (y * w + x) * 4);
     expect(removeBackground(data, w, w)).toBe(true);
     expect(data[(10 * w + 9) * 4 + 3]).toBe(255);
@@ -74,7 +74,7 @@ describe('removeBackground', () => {
 describe('adaptLogo', () => {
   const pixel = (rgb: number[]) => new Uint8ClampedArray([...rgb, 255]);
 
-  it('turns dark lettering white for the dark bar, keeping colours', () => {
+  it('turns dark lettering white for the dark bar, keeping colors', () => {
     const black = pixel([10, 10, 10]);
     const red = pixel([255, 0, 51]);
     const white = pixel([250, 250, 250]);

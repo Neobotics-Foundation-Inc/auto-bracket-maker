@@ -49,7 +49,7 @@ const elbow = (fromX: number, fromY: number, toX: number, toY: number) => {
 /**
  * Positions the main (winners) bracket's cards and connector lines.
  * Linear: rounds run left to right with the final last.
- * Mirrored: two halves face a final in the centre, which is half as tall for projectors.
+ * Mirrored: two halves face a final in the center, which is half as tall for projectors.
  * The third-place race, if any, sits under the final. With `withoutFinal` the bracket
  * stops at the semifinals (the final is shown elsewhere), and mirrored halves face each
  * other with nothing in between.
@@ -61,21 +61,21 @@ export function layoutBracket(
   const cw = opts.cardW ?? CARD_W;
   const { rounds } = bracket;
   const finalRound = rounds.length - 1;
-  const centreFinal = !opts.withoutFinal;
-  const lastRound = centreFinal ? finalRound : finalRound - 1;
+  const centerFinal = !opts.withoutFinal;
+  const lastRound = centerFinal ? finalRound : finalRound - 1;
   const first = Math.min(Math.max(opts.firstRound, 0), lastRound);
-  const mirrored = opts.mirrored && (centreFinal ? first < finalRound : true);
-  const extra = centreFinal ? bracket.thirdPlace : null;
+  const mirrored = opts.mirrored && (centerFinal ? first < finalRound : true);
+  const extra = centerFinal ? bracket.thirdPlace : null;
 
   // Columns on one side, outermost first. In linear mode the final is the last column.
   const sideRounds: number[] = [];
-  for (let r = first; r < (mirrored && centreFinal ? finalRound : lastRound + 1); r++) sideRounds.push(r);
+  for (let r = first; r < (mirrored && centerFinal ? finalRound : lastRound + 1); r++) sideRounds.push(r);
 
   const outerCount = mirrored ? rounds[first].length / 2 : rounds[first].length;
   const bodyH = Math.max(outerCount * (CARD_H + ROW_GAP), extra ? MIN_BODY_H : 0);
   const height = HEADER_H + bodyH;
   const step = cw + COL_GAP;
-  const columns = mirrored ? sideRounds.length * 2 + (centreFinal ? 1 : 0) : sideRounds.length;
+  const columns = mirrored ? sideRounds.length * 2 + (centerFinal ? 1 : 0) : sideRounds.length;
   const width = columns * cw + (columns - 1) * COL_GAP;
 
   const cards: CardBox[] = [];
@@ -96,8 +96,8 @@ export function layoutBracket(
         cards.push({ match, x, y: cy - CARD_H / 2 });
 
         const isLastCol = col === sideRounds.length - 1;
-        if (isLastCol && !(mirrored && centreFinal)) return;
-        // Parent is the next column on this side, or the final in the centre.
+        if (isLastCol && !(mirrored && centerFinal)) return;
+        // Parent is the next column on this side, or the final in the center.
         const parentX = isLastCol ? sideRounds.length * step : xOf(col + 1);
         const parentY = isLastCol ? HEADER_H + bodyH / 2 : centerY(i >> 1, matches.length / 2);
         paths.push(side === 'left' ? elbow(x + cw, cy, parentX, parentY) : elbow(x, cy, parentX + cw, parentY));
@@ -109,7 +109,7 @@ export function layoutBracket(
   const finalY = HEADER_H + bodyH / 2 - CARD_H / 2;
   let finalX: number;
   if (mirrored) placeSide('right');
-  if (mirrored && centreFinal) {
+  if (mirrored && centerFinal) {
     finalX = sideRounds.length * step;
     headers.push({ label: sectionRoundName(bracket, 'main', finalRound), x: finalX, y: 0 });
     cards.push({ match: rounds[finalRound][0], x: finalX, y: finalY });
