@@ -1,5 +1,6 @@
 import {
   BYE,
+  type BestOf,
   type Bracket,
   type Match,
   type SeededTeam,
@@ -75,6 +76,29 @@ export function allMatches(bracket: Bracket): Match[] {
 
 export const findMatch = (bracket: Bracket, id: string) => allMatches(bracket).find((m) => m.id === id);
 
+/** "main:2", "losers:0", "grand:0": a round in its section. */
+export const roundKey = (section: Section, round: number) => `${section}:${round}`;
+export const bestOfOf = (m: Match): BestOf => m.bestOf ?? 1;
+/** A round's heats setting, as its header shows it. */
+export const roundBestOf = (bracket: Bracket, section: Section, round: number): BestOf =>
+  bracket.roundBestOf?.[roundKey(section, round)] ?? 1;
+/** Heats a team must win to take the match: 1, or 2 of 3. */
+const winsNeeded = (m: Match) => (bestOfOf(m) + 1) / 2;
+
+/**
+ * The score to show for each side, [a, b]: heats won in a best-of-3 match (0–0 once both teams are
+ * known), or 1–0 once a single race is decided. Null while there's nothing to show.
+ */
+export function heatScore(m: Match): [number, number] | null {
+  if (!isPlayable(m)) return null;
+  if (bestOfOf(m) > 1) return m.heats ? [...m.heats.wins] : [0, 0];
+  if (!isTeam(m.winner)) return null;
+  return m.winner === m.a ? [1, 0] : [0, 1];
+}
+
+/** Which heat is next in a best-of-3 match still being raced, counting from 1. */
+export const nextHeat = (m: Match) => (m.heats ? m.heats.wins[0] + m.heats.wins[1] : 0) + 1;
+
 /** The extra grand-final heat is raced: the losers-bracket champion won the grand final. */
 export const extraHeatNeeded = (bracket: Bracket) => !!bracket.grandExtra && isTeam(bracket.grandExtra.a);
 
@@ -129,6 +153,12 @@ function resolve(bracket: Bracket) {
       m[side === 0 ? 'a' : 'b'] = source.take === 'winner' ? from.winner : loserOf(from);
     });
     if (m.picked && (m.picked.a !== m.a || m.picked.b !== m.b)) m.picked = null;
+    if (m.heats && (m.heats.a !== m.a || m.heats.b !== m.b)) m.heats = null;
+    if (bestOfOf(m) > 1) {
+      // The first to win enough heats takes the match.
+      const side = m.heats?.wins.findIndex((w) => w >= winsNeeded(m)) ?? -1;
+      m.picked = m.heats && side >= 0 ? { winner: side === 0 ? m.heats.a : m.heats.b, a: m.heats.a, b: m.heats.b } : null;
+    }
     m.winner = decide(m);
     byId.set(m.id, m);
   }
@@ -175,8 +205,16 @@ function buildLosers(rounds: Match[][]): Match[][] {
   return losers;
 }
 
-/** Builds a bracket from seeded teams, giving byes to the top seeds. */
-export function buildBracket(teams: SeededTeam[], format: ThirdPlaceFormat = 'race'): Bracket {
+/**
+ * Builds a bracket from seeded teams, giving byes to the top seeds. Every round races `bestOf`
+ * heats, except rounds set otherwise in `roundHeats`; the extra grand-final heat is always a single race.
+ */
+export function buildBracket(
+  teams: SeededTeam[],
+  format: ThirdPlaceFormat = 'race',
+  bestOf: BestOf = 1,
+  roundHeats: Record<string, BestOf> = {},
+): Bracket {
   const size = nextPow2(Math.max(teams.length, 2));
   const idBySeed = new Map(teams.map((t) => [t.seed, t.id]));
   const order = seedOrder(size);
@@ -218,20 +256,29 @@ export function buildBracket(teams: SeededTeam[], format: ThirdPlaceFormat = 'ra
       ? newMatch('grand', 'grand', 0, 0, [winnerOf(final.id), winnerOf(losers[losers.length - 1][0].id)])
       : null,
     grandExtra: losers.length ? newExtraHeat() : null,
+    roundBestOf: {},
   };
+  for (const m of allMatches(bracket)) {
+    if (m === bracket.grandExtra) continue;
+    const key = roundKey(m.section, m.round);
+    m.bestOf = roundHeats[key] ?? bestOf;
+    bracket.roundBestOf![key] = m.bestOf;
+  }
   resolve(bracket);
   return bracket;
 }
 
 /**
  * The bracket as it was when it was generated: the same teams, seeds and format, with every
- * result cleared. Built from the bracket's own teams, not the setup page's, so edits made there
- * since don't change it.
+ * result cleared. Built from the bracket's own teams and heats settings, not the setup page's, so
+ * edits made there since don't change it.
  */
 export function resetBracket(bracket: Bracket): Bracket {
   return buildBracket(
     Object.values(bracket.teams).sort((x, y) => x.seed - y.seed),
     bracket.format,
+    1,
+    bracket.roundBestOf,
   );
 }
 
@@ -249,6 +296,64 @@ export function advanceWinner(bracket: Bracket, matchId: string, teamId: string)
   match.picked = match.picked?.winner === teamId ? null : { winner: teamId, a: current.a!, b: current.b! };
   resolve(next);
   return next;
+}
+
+/**
+ * A click on a team in a race. In a single race it records the winner, as advanceWinner does. In
+ * a best-of-3 match it adds a heat won by that team, and the first to 2 takes the match; clicking
+ * the winner of a decided match clears its score (and any later results that depended on it).
+ */
+export function recordHeat(bracket: Bracket, matchId: string, teamId: string): Bracket {
+  const current = findMatch(bracket, matchId);
+  if (!current || bestOfOf(current) === 1) return advanceWinner(bracket, matchId, teamId);
+  if (!isPlayable(current) || (teamId !== current.a && teamId !== current.b)) return bracket;
+  if (current.winner && current.winner !== teamId) return bracket;
+
+  const next = structuredClone(bracket);
+  const match = findMatch(next, matchId)!;
+  if (match.winner) {
+    match.heats = null;
+  } else {
+    const wins: [number, number] = match.heats ? [...match.heats.wins] : [0, 0];
+    wins[teamId === match.a ? 0 : 1]++;
+    match.heats = { a: match.a!, b: match.b!, wins };
+  }
+  resolve(next);
+  return next;
+}
+
+/**
+ * Sets how many heats the rounds whose matches pass `inRound` race. Matches already under way or
+ * decided keep their format, so no result is lost; the setting applies to the rest. The extra
+ * grand-final heat stays a single race.
+ */
+function setBestOf(bracket: Bracket, bestOf: BestOf, inRound: (m: Match) => boolean): Bracket {
+  const next = structuredClone(bracket);
+  next.roundBestOf = { ...next.roundBestOf };
+  for (const m of allMatches(next)) {
+    if (m === next.grandExtra || !inRound(m)) continue;
+    next.roundBestOf[roundKey(m.section, m.round)] = bestOf;
+    if (!m.picked && !m.heats) m.bestOf = bestOf;
+  }
+  resolve(next);
+  return next;
+}
+
+/** Sets how many heats one round races (see setBestOf). */
+export const setRoundBestOf = (bracket: Bracket, section: Section, round: number, bestOf: BestOf) =>
+  setBestOf(bracket, bestOf, (m) => m.section === section && m.round === round);
+
+/** Sets every round to the same heats (see setBestOf). */
+export const setAllBestOf = (bracket: Bracket, bestOf: BestOf) => setBestOf(bracket, bestOf, () => true);
+
+/** The heats every round races, or null when rounds differ. */
+export function allRoundsBestOf(bracket: Bracket): BestOf | null {
+  const settings = new Set(
+    allMatches(bracket)
+      .filter((m) => m !== bracket.grandExtra)
+      .map((m) => roundBestOf(bracket, m.section, m.round)),
+  );
+  return settings.size === 1 ? [...settings][0] : null;
 }
 
 export interface Podium {

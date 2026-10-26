@@ -2,17 +2,23 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWinner,
   allMatches,
+  allRoundsBestOf,
   buildBracket,
   extraHeatNeeded,
   findMatch,
+  heatScore,
   isPlayable,
   matchLabel,
   migrateBracket,
   podium,
   progress,
+  recordHeat,
   resetBracket,
+  roundBestOf,
   roundName,
   seedOrder,
+  setAllBestOf,
+  setRoundBestOf,
   showsExtraHeat,
 } from './bracket';
 import { raceRows } from './results';
@@ -313,6 +319,98 @@ describe('double elimination', () => {
     expect(matchLabel(b, match(b, 'r2m0'))).toBe('Winners final');
     expect(matchLabel(b, match(b, 'l3m0'))).toBe('Losers final');
     expect(matchLabel(b, match(b, 'l0m1'))).toBe('Losers round 1 · 2');
+  });
+});
+
+describe('heats', () => {
+  it('races best of 3: the first to 2 heats wins and advances', () => {
+    let b = buildBracket(makeTeams(8), 'race', 3);
+    expect(heatScore(match(b, 'r0m0'))).toEqual([0, 0]);
+    b = recordHeat(b, 'r0m0', 't8');
+    expect(match(b, 'r0m0').winner).toBeNull();
+    expect(heatScore(match(b, 'r0m0'))).toEqual([0, 1]);
+    b = recordHeat(b, 'r0m0', 't1');
+    b = recordHeat(b, 'r0m0', 't1');
+    expect(heatScore(match(b, 'r0m0'))).toEqual([2, 1]);
+    expect(match(b, 'r0m0').winner).toBe('t1');
+    expect(match(b, 'r1m0').a).toBe('t1');
+    expect(progress(b)).toEqual({ decided: 1, total: 8 });
+  });
+
+  it('ignores the loser of a decided best of 3; clicking the winner clears it and what followed', () => {
+    let b = buildBracket(makeTeams(8), 'race', 3);
+    for (const [id, team] of [['r0m0', 't1'], ['r0m0', 't1'], ['r0m1', 't4'], ['r0m1', 't4'], ['r1m0', 't1']]) {
+      b = recordHeat(b, id, team);
+    }
+    expect(recordHeat(b, 'r0m0', 't8')).toBe(b);
+    const cleared = recordHeat(b, 'r0m0', 't1');
+    expect(match(cleared, 'r0m0').winner).toBeNull();
+    expect(heatScore(match(cleared, 'r0m0'))).toEqual([0, 0]);
+    // Team 1 is no longer in the semifinal, so the heat it won there is gone.
+    expect(match(cleared, 'r1m0').heats).toBeNull();
+    expect(match(cleared, 'r1m0').a).toBeNull();
+  });
+
+  it('drops a later match’s heats when an earlier result changes who is in it', () => {
+    let b = buildBracket(makeTeams(4), 'race', 3);
+    for (const [id, team] of [['r0m0', 't1'], ['r0m0', 't1'], ['r0m1', 't2'], ['r0m1', 't2'], ['r1m0', 't2']]) {
+      b = recordHeat(b, id, team);
+    }
+    expect(heatScore(match(b, 'r1m0'))).toEqual([0, 1]);
+    // Clear Team 1's semifinal and give it to Team 4 instead.
+    b = recordHeat(recordHeat(recordHeat(b, 'r0m0', 't1'), 'r0m0', 't4'), 'r0m0', 't4');
+    expect(match(b, 'r1m0').a).toBe('t4');
+    expect(heatScore(match(b, 'r1m0'))).toEqual([0, 0]);
+  });
+
+  it('shows 1–0 for a decided single race and nothing before', () => {
+    let b = buildBracket(makeTeams(4), 'race');
+    expect(heatScore(match(b, 'r0m0'))).toBeNull();
+    b = recordHeat(b, 'r0m0', 't4');
+    expect(heatScore(match(b, 'r0m0'))).toEqual([0, 1]);
+    expect(heatScore(match(b, 'r1m0'))).toBeNull();
+  });
+
+  it('sets a round’s heats, leaving races already under way as they are', () => {
+    let b = buildBracket(makeTeams(8), 'race');
+    b = recordHeat(b, 'r0m0', 't1');
+    b = setRoundBestOf(b, 'main', 0, 3);
+    expect(roundBestOf(b, 'main', 0)).toBe(3);
+    expect(match(b, 'r0m0').bestOf).toBe(1);
+    expect(match(b, 'r0m0').winner).toBe('t1');
+    expect(match(b, 'r0m1').bestOf).toBe(3);
+    expect(roundBestOf(b, 'main', 1)).toBe(1);
+  });
+
+  it('sets every round at once, and says whether all rounds agree', () => {
+    let b = buildBracket(makeTeams(8), 'double');
+    expect(allRoundsBestOf(b)).toBe(1);
+    b = recordHeat(b, 'r0m0', 't1');
+    b = setAllBestOf(b, 3);
+    expect(allRoundsBestOf(b)).toBe(3);
+    expect(allMatches(b).filter((m) => m.bestOf === 1).map((m) => m.id)).toEqual(['r0m0']);
+    expect(b.grandExtra!.bestOf).toBeUndefined();
+    b = setRoundBestOf(b, 'main', 1, 1);
+    expect(allRoundsBestOf(b)).toBeNull();
+    expect(allRoundsBestOf(setAllBestOf(b, 1))).toBe(1);
+  });
+
+  it('keeps the extra grand-final heat a single race, and each round’s heats through a reset', () => {
+    const b = buildBracket(makeTeams(8), 'double', 3);
+    expect(b.grandFinal!.bestOf).toBe(3);
+    expect(b.grandExtra!.bestOf).toBeUndefined();
+    const reset = resetBracket(setRoundBestOf(b, 'losers', 0, 1));
+    expect(roundBestOf(reset, 'losers', 0)).toBe(1);
+    expect(roundBestOf(reset, 'main', 0)).toBe(3);
+  });
+
+  it('treats brackets saved before heats existed as single races', () => {
+    const b = buildBracket(makeTeams(4), 'race');
+    for (const m of allMatches(b)) delete m.bestOf;
+    delete b.roundBestOf;
+    const played = recordHeat(b, 'r0m0', 't1');
+    expect(match(played, 'r0m0').winner).toBe('t1');
+    expect(roundBestOf(played, 'main', 0)).toBe(1);
   });
 });
 

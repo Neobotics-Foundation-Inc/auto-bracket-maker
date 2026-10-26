@@ -9,8 +9,9 @@ import {
   showsBothBrackets,
   type Layout,
 } from '../lib/layout';
+import { roundBestOf, sectionRoundName } from '../lib/bracket';
 import { shownSeeds } from '../lib/entrants';
-import type { Bracket, BracketPane } from '../lib/types';
+import type { BestOf, Bracket, BracketPane, Section } from '../lib/types';
 import { FitToScreen, type Box } from './FitToScreen';
 import { MatchCard } from './MatchCard';
 
@@ -21,6 +22,7 @@ interface Props {
   losersFirstRound: number;
   present: boolean;
   onPick: (matchId: string, teamId: string) => void;
+  onRoundBestOf: (section: Section, round: number, bestOf: BestOf) => void;
 }
 
 // Presenting, the bracket may enlarge this far, and cards widen up to this, to fill the screen.
@@ -41,7 +43,34 @@ export function fillingCardWidth(layoutAt: (cardW: number) => Layout, box: Box):
   return Math.min(CARD_W + wanted / perPixel, MAX_CARD_W);
 }
 
-export function BracketView({ bracket, pane, firstRound, losersFirstRound, present, onPick }: Props) {
+/**
+ * A round's heats under its name: a button switching between a single heat and best of 3 while
+ * editing, and a plain "Best of 3" when presenting (nothing for single heats).
+ */
+function HeatsChip(props: {
+  bracket: Bracket;
+  section: Section;
+  round: number;
+  present: boolean;
+  onChange: (section: Section, round: number, bestOf: BestOf) => void;
+}) {
+  const { bracket, section, round } = props;
+  const bestOf = roundBestOf(bracket, section, round);
+  const text = bestOf === 1 ? '1 heat' : `Best of ${bestOf}`;
+  if (props.present) return bestOf > 1 ? <span className="heats-chip heats-chip--on">{text}</span> : null;
+  const name = sectionRoundName(bracket, section, round);
+  return (
+    <button
+      className={`heats-chip ${bestOf > 1 ? 'heats-chip--on' : ''}`}
+      onClick={() => props.onChange(section, round, bestOf === 1 ? 3 : 1)}
+      title={`${name}: ${bestOf === 1 ? 'a single heat per race' : `best of ${bestOf} heats`}. Click to switch to ${bestOf === 1 ? 'best of 3' : 'a single heat'}; races already under way keep theirs.`}
+    >
+      {text}
+    </button>
+  );
+}
+
+export function BracketView({ bracket, pane, firstRound, losersFirstRound, present, onPick, onRoundBestOf }: Props) {
   const [box, setBox] = useState<Box | null>(null);
   const seeds = useMemo(() => shownSeeds(Object.values(bracket.teams)), [bracket.teams]);
   // The grand final is a single small picture, so it's always scaled to fill the space.
@@ -79,7 +108,8 @@ export function BracketView({ bracket, pane, firstRound, losersFirstRound, prese
               className={`round-header ${h.sub ? 'round-header--sub' : ''}`}
               style={{ left: h.x, top: h.y, width: layout.cardW, height: h.sub ? undefined : HEADER_H }}
             >
-              {h.label}
+              <span>{h.label}</span>
+              {h.round && <HeatsChip bracket={bracket} {...h.round} present={present} onChange={onRoundBestOf} />}
             </div>
           ),
         )}

@@ -1,7 +1,7 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { downloadFile } from '../lib/download';
 import { EMPTY_TIME, isCleared, MAX_TEAMS, mergeRows, newId, validateEntrants } from '../lib/entrants';
-import type { Entrant, EventInfo, ThirdPlaceFormat } from '../lib/types';
+import type { BestOf, Entrant, EventInfo, ThirdPlaceFormat } from '../lib/types';
 import type { ConfirmRequest } from './ConfirmDialog';
 import { TeamTable } from './TeamTable';
 
@@ -17,6 +17,8 @@ interface Props {
   onConfirm: (request: ConfirmRequest) => void;
   format: ThirdPlaceFormat;
   onFormatChange: (format: ThirdPlaceFormat) => void;
+  bestOf: BestOf;
+  onBestOfChange: (bestOf: BestOf) => void;
   /** Eligibility checks: only teams checked in and inspected are seeded. */
   requireChecks: boolean;
   onRequireChecksChange: (on: boolean) => void;
@@ -43,7 +45,20 @@ const FORMATS: { value: ThirdPlaceFormat; title: string; detail: string }[] = [
   },
 ];
 
-type Notice = { kind: 'info' | 'error'; text: string } | null;
+const HEATS: { value: BestOf; title: string; detail: string }[] = [
+  {
+    value: 1,
+    title: 'Single heat',
+    detail: 'One heat per race: the winner advances.',
+  },
+  {
+    value: 3,
+    title: 'Best of 3',
+    detail: 'The first team to win 2 heats advances. Click a team once for each heat it wins.',
+  },
+];
+
+type Notice ={ kind: 'info' | 'error'; text: string } | null;
 
 export function SetupPage(props: Props) {
   const { event, entrants, hasBracket, bracketStale, onEventChange, onEntrantsChange } = props;
@@ -156,6 +171,26 @@ export function SetupPage(props: Props) {
               />
               <span className="format-option__title">{f.title}</span>
               <span className="format-option__detail">{f.detail}</span>
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Heats per race</h2>
+        <p className="muted panel-note">For a new bracket. Each round can then be changed from its heading on the bracket.</p>
+        <div className="format-options" role="radiogroup" aria-label="Heats per race">
+          {HEATS.map((h) => (
+            <label key={h.value} className={`format-option ${props.bestOf === h.value ? 'format-option--active' : ''}`}>
+              <input
+                type="radio"
+                name="heats"
+                value={h.value}
+                checked={props.bestOf === h.value}
+                onChange={() => props.onBestOfChange(h.value)}
+              />
+              <span className="format-option__title">{h.title}</span>
+              <span className="format-option__detail">{h.detail}</span>
             </label>
           ))}
         </div>

@@ -17,6 +17,7 @@ export const initialState: AppState = {
   event: { title: '', subtitle: '' },
   entrants: [],
   format: 'race',
+  bestOf: 1,
   bracket: null,
   view: 'customize',
   pane: 'winners',

@@ -22,7 +22,16 @@ import {
   type Backup,
   type BackupReason,
 } from './lib/backups';
-import { advanceWinner, buildBracket, progress, resetBracket, sectionRoundName } from './lib/bracket';
+import {
+  allRoundsBestOf,
+  buildBracket,
+  progress,
+  recordHeat,
+  resetBracket,
+  sectionRoundName,
+  setAllBestOf,
+  setRoundBestOf,
+} from './lib/bracket';
 import { loadBranding, saveBranding, upgradeLogo, type Branding } from './lib/branding';
 import { describeEvent, EventFileError, eventFileName, parseEventFile, toEventFile } from './lib/eventFile';
 import { describeResult, EMPTY_HISTORY, record, redo as redoResult, undo as undoResult, type History } from './lib/history';
@@ -35,7 +44,7 @@ import { moveInQueue, raceQueue } from './lib/queue';
 import { resultsCsv, resultsFileName, standingsCsv } from './lib/results';
 import { initialState, loadState, saveState } from './lib/storage';
 import { adjust, phase, reset as resetTimer, setDuration, toggle } from './lib/timer';
-import type { AppState, BracketPane, SeededTeam, View } from './lib/types';
+import type { AppState, BestOf, Bracket, BracketPane, SeededTeam, Section, View } from './lib/types';
 
 const PRESENT_VIEWS: { view: View; label: string }[] = [
   { view: 'spotlight', label: 'Spotlight' },
@@ -148,12 +157,22 @@ export default function App() {
 
   // Undo and redo for race results, this session only (backups cover a reload).
   const [history, setHistory] = useState<History>(EMPTY_HISTORY);
-  const pick = (matchId: string, teamId: string) => {
-    if (!state.bracket) return;
-    const next = advanceWinner(state.bracket, matchId, teamId);
-    if (next === state.bracket) return;
+  // A result or a change of heats: either can be undone.
+  const changeBracket = (next: Bracket) => {
+    if (!state.bracket || next === state.bracket) return;
     setHistory((h) => record(h, state.bracket!));
     patch({ bracket: next });
+  };
+  const pick = (matchId: string, teamId: string) => {
+    if (state.bracket) changeBracket(recordHeat(state.bracket, matchId, teamId));
+  };
+  const setHeats = (section: Section, round: number, bestOf: BestOf) => {
+    if (state.bracket) changeBracket(setRoundBestOf(state.bracket, section, round, bestOf));
+  };
+  // Every round at once: back to single heats when all are best of 3, otherwise all best of 3.
+  const allBestOf3 = !!state.bracket && allRoundsBestOf(state.bracket) === 3;
+  const toggleAllHeats = () => {
+    if (state.bracket) changeBracket(setAllBestOf(state.bracket, allBestOf3 ? 1 : 3));
   };
   const stepHistory = (direction: 'undo' | 'redo') => {
     if (!state.bracket) return;
@@ -273,7 +292,7 @@ export default function App() {
       replaceEvent(
         {
           ...state,
-          bracket: buildBracket(seeded, format),
+          bracket: buildBracket(seeded, format, state.bestOf),
           view: 'bracket',
           pane: 'winners',
           firstRound: 0,
@@ -530,6 +549,8 @@ export default function App() {
           onEntrantsChange={(list) => patch({ entrants: list })}
           format={format}
           onFormatChange={(f) => patch({ format: f })}
+          bestOf={state.bestOf}
+          onBestOfChange={(b) => patch({ bestOf: b })}
           onGenerate={generate}
           onViewBracket={() => setView('bracket')}
           onConfirm={setConfirmRequest}
@@ -602,6 +623,13 @@ export default function App() {
               <div className="actions">
                 <RaceTimer timer={timer} onToggle={toggleTimer} onReset={resetRaceTimer} onAdjust={adjustRaceTimer} onSetDuration={setRaceLength} variant="toolbar" />
                 <button
+                  className="btn heats-all"
+                  onClick={toggleAllHeats}
+                  title={`Set every round to ${allBestOf3 ? 'a single heat' : 'best of 3 heats'}; races already under way keep theirs`}
+                >
+                  {allBestOf3 ? 'All rounds: 1 heat' : 'All rounds: best of 3'}
+                </button>
+                <button
                   className="btn"
                   disabled={!canUndo}
                   onClick={() => stepHistory('undo')}
@@ -649,6 +677,7 @@ export default function App() {
             losersFirstRound={state.losersFirstRound}
             present={present}
             onPick={pick}
+            onRoundBestOf={setHeats}
           />
         </main>
       )}

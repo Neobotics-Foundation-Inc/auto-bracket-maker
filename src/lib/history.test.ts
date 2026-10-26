@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { advanceWinner, buildBracket } from './bracket';
+import { advanceWinner, buildBracket, recordHeat, setAllBestOf, setRoundBestOf } from './bracket';
 import { describeResult, EMPTY_HISTORY, record, redo, undo } from './history';
 import type { SeededTeam } from './types';
 
@@ -35,6 +35,24 @@ describe('undo and redo', () => {
     // Clicking the winner again clears the result.
     expect(describeResult(b1, advanceWinner(b1, 'r0m0', 't1'))).toBe('Cleared Quarterfinal 1');
     expect(describeResult(b1, b1)).toBeNull();
+  });
+
+  it('says which heat was won in a best of 3, and the score', () => {
+    const h0 = buildBracket(teams, 'race', 3);
+    const h1 = recordHeat(h0, 'r0m0', 't8');
+    const h2 = recordHeat(h1, 'r0m0', 't1');
+    const h3 = recordHeat(h2, 'r0m0', 't1');
+    expect(describeResult(h0, h1)).toBe('Team 8 won heat 1 of Quarterfinal 1 (0–1)');
+    expect(describeResult(h1, h2)).toBe('Team 1 won heat 2 of Quarterfinal 1 (1–1)');
+    expect(describeResult(h2, h3)).toBe('Team 1 won Quarterfinal 1 (2–1)');
+    expect(describeResult(h3, recordHeat(h3, 'r0m0', 't1'))).toBe('Cleared Quarterfinal 1');
+  });
+
+  it('says when a round’s heats change', () => {
+    const bo3 = setRoundBestOf(b0, 'main', 1, 3);
+    expect(describeResult(b0, bo3)).toBe('Semifinals set to best of 3');
+    expect(describeResult(bo3, setRoundBestOf(bo3, 'main', 1, 1))).toBe('Semifinals set to a single heat');
+    expect(describeResult(b0, setAllBestOf(b0, 3))).toBe('All rounds set to best of 3');
   });
 
   it('names the race clicked, not the later ones cleared by it', () => {

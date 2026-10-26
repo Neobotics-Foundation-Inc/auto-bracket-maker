@@ -117,7 +117,10 @@ export function PrintResults({ event, standings, bracket }: PrintProps) {
                   <td>
                     {r.teamA} vs {r.teamB}
                   </td>
-                  <td>{r.winner || (r.status === 'Ready' ? 'To race' : '—')}</td>
+                  <td>
+                    {r.winner || (r.status === 'Ready' ? 'To race' : '—')}
+                    {r.score && ` (${r.score})`}
+                  </td>
                 </tr>
               ))}
             </tbody>

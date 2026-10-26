@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { matchLabel } from '../lib/bracket';
+import { bestOfOf, heatScore, matchLabel, nextHeat } from '../lib/bracket';
 import { clockTime, finishesAt, racesLeft, startsAt } from '../lib/queue';
 import type { Bracket, Match } from '../lib/types';
 
@@ -27,13 +27,23 @@ export function pairing(bracket: Bracket, match: Match): string {
   return `${side(match.a)} vs ${side(match.b)}`;
 }
 
-/** "Now on track · Quarterfinal 2 · MIT BWSI vs Duke RoboRacers". */
+/**
+ * "Now on track · Quarterfinal 2 · MIT BWSI vs Duke RoboRacers", or for a best of 3
+ * "Now on track · Quarterfinal 2 · Heat 2 · MIT BWSI 1–0 Duke RoboRacers".
+ */
 function NowLine({ bracket, match }: { bracket: Bracket; match: Match }) {
+  const score = bestOfOf(match) > 1 ? heatScore(match) : null;
+  const name = (slot: string | null) => (slot ? bracket.teams[slot]?.name : undefined) ?? 'TBD';
   return (
     <p className="queue__now">
       <span className="queue__tag">Now on track</span>
-      <span className="queue__race">{matchLabel(bracket, match)}</span>
-      <span className="queue__teams">{pairing(bracket, match)}</span>
+      <span className="queue__race">
+        {matchLabel(bracket, match)}
+        {score && ` · Heat ${nextHeat(match)}`}
+      </span>
+      <span className="queue__teams">
+        {score ? `${name(match.a)} ${score[0]}–${score[1]} ${name(match.b)}` : pairing(bracket, match)}
+      </span>
     </p>
   );
 }

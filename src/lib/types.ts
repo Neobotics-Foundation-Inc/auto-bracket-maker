@@ -65,9 +65,19 @@ export interface Match {
   sources: [Source | null, Source | null];
   /** A team, BYE when two byes meet, or null while undecided. */
   winner: SlotValue;
-  /** The result the user clicked, kept only while the same two teams are in the match. */
+  /**
+   * The result the user clicked, kept only while the same two teams are in the match. In a
+   * best-of-3 match it follows from `heats`.
+   */
   picked: { winner: string; a: string; b: string } | null;
+  /** Heats to race: 1, or best of 3. Missing (brackets saved before heats existed) means 1. */
+  bestOf?: BestOf;
+  /** Best of 3 only: heats won by slots a and b, kept only while the same two teams are in the match. */
+  heats?: { a: string; b: string; wins: [number, number] } | null;
 }
+
+/** A single heat, or best of 3 heats (first to win 2). */
+export type BestOf = 1 | 3;
 
 export interface Bracket {
   /** Number of first-round slots, always a power of 2. */
@@ -88,6 +98,11 @@ export interface Bracket {
    * that happens. Missing from brackets saved before it existed, until they're migrated.
    */
   grandExtra?: Match | null;
+  /**
+   * Each round's heats, by round key ("main:0", "losers:2", "grand:0"). Missing rounds, and brackets
+   * saved before heats existed, are single heats.
+   */
+  roundBestOf?: Record<string, BestOf>;
 }
 
 export interface EventInfo {
@@ -106,6 +121,8 @@ export interface AppState {
   entrants: Entrant[];
   /** Format for the next bracket generated; the current bracket keeps its own. */
   format: ThirdPlaceFormat;
+  /** Heats per race for the next bracket generated; its rounds can then be changed one by one. */
+  bestOf: BestOf;
   bracket: Bracket | null;
   view: View;
   pane: BracketPane;

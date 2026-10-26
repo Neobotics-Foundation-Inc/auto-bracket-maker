@@ -2,7 +2,7 @@ import { migrateState } from './storage';
 import type { AppState } from './types';
 
 /** What a backup keeps: the event itself, not how it was being viewed (theme, tab, timer). */
-export type EventContent = Pick<AppState, 'event' | 'entrants' | 'format' | 'bracket' | 'pane' | 'firstRound' | 'losersFirstRound'>;
+export type EventContent = Pick<AppState, 'event' | 'entrants' | 'format' | 'bestOf' | 'bracket' | 'pane' | 'firstRound' | 'losersFirstRound'>;
 
 /**
  * A copy of the event taken automatically as it changes, or just before something that replaces
@@ -50,12 +50,12 @@ const COALESCE_MS = 5 * 60 * 1000;
 const KEY = 'auto-bracket-maker:backups';
 
 export function contentOf(state: AppState): EventContent {
-  const { event, entrants, format, bracket, pane, firstRound, losersFirstRound } = state;
-  return { event, entrants, format, bracket, pane, firstRound, losersFirstRound };
+  const { event, entrants, format, bestOf, bracket, pane, firstRound, losersFirstRound } = state;
+  return { event, entrants, format, bestOf, bracket, pane, firstRound, losersFirstRound };
 }
 
 /** Whether the event itself differs; which tab or round was showing doesn't count. */
-const eventKey = (c: EventContent) => JSON.stringify([c.event, c.entrants, c.format, c.bracket]);
+const eventKey = (c: EventContent) => JSON.stringify([c.event, c.entrants, c.format, c.bestOf, c.bracket]);
 const isEmpty = (c: EventContent) => !c.entrants.length && !c.bracket && !c.event.title.trim() && !c.event.subtitle.trim();
 
 /**

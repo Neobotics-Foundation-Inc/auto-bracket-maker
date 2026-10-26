@@ -1,5 +1,5 @@
 import { extraHeatNeeded, sectionRoundName, showsExtraHeat } from './bracket';
-import type { Bracket, Match } from './types';
+import type { Bracket, Match, Section } from './types';
 
 // Kept tight so a 64-slot bracket still scales to a legible size on one 16:9 screen.
 // Present mode widens cards (every layout takes `cardW`) to fill the projected screen.
@@ -28,6 +28,8 @@ export interface Header extends Box {
   section?: boolean;
   /** A small label over a single race below the final ("Third place"). */
   sub?: boolean;
+  /** The round it heads, for its heats setting. Not on section titles or the extra heat. */
+  round?: { section: Section; round: number };
 }
 export interface Layout {
   width: number;
@@ -89,7 +91,7 @@ export function layoutBracket(
       const all = rounds[round];
       const matches = !mirrored ? all : side === 'left' ? all.slice(0, all.length / 2) : all.slice(all.length / 2);
       const x = xOf(col);
-      headers.push({ label: sectionRoundName(bracket, 'main', round), x, y: 0 });
+      headers.push({ label: sectionRoundName(bracket, 'main', round), x, y: 0, round: { section: 'main', round } });
 
       matches.forEach((match, i) => {
         const cy = centerY(i, matches.length);
@@ -111,7 +113,7 @@ export function layoutBracket(
   if (mirrored) placeSide('right');
   if (mirrored && centerFinal) {
     finalX = sideRounds.length * step;
-    headers.push({ label: sectionRoundName(bracket, 'main', finalRound), x: finalX, y: 0 });
+    headers.push({ label: sectionRoundName(bracket, 'main', finalRound), x: finalX, y: 0, round: { section: 'main', round: finalRound } });
     cards.push({ match: rounds[finalRound][0], x: finalX, y: finalY });
   } else {
     finalX = (sideRounds.length - 1) * step;
@@ -119,7 +121,13 @@ export function layoutBracket(
 
   if (extra) {
     const y = finalY + CARD_H + EXTRA_GAP;
-    headers.push({ label: sectionRoundName(bracket, extra.section, 0), x: finalX, y: y - EXTRA_LABEL_H, sub: true });
+    headers.push({
+      label: sectionRoundName(bracket, extra.section, 0),
+      x: finalX,
+      y: y - EXTRA_LABEL_H,
+      sub: true,
+      round: { section: extra.section, round: 0 },
+    });
     cards.push({ match: extra, x: finalX, y });
   }
 
@@ -147,7 +155,12 @@ export function layoutLosers(bracket: Bracket, firstRound = 0, { withoutFinal = 
   columns.forEach((matches, col) => {
     const x = col * step;
     const match0 = matches[0];
-    headers.push({ label: sectionRoundName(bracket, match0.section, match0.round), x, y: 0 });
+    headers.push({
+      label: sectionRoundName(bracket, match0.section, match0.round),
+      x,
+      y: 0,
+      round: { section: match0.section, round: match0.round },
+    });
     const ys = matches.map((_, i) => {
       if (col === 0) return HEADER_H + ((i + 0.5) * bodyH) / matches.length;
       // Same size: straight across. Half the size: between the two matches feeding it.
@@ -233,7 +246,7 @@ export function layoutCombined(bracket: Bracket, cw = CARD_W): Layout {
     headers: [
       { label: 'Winners bracket', x: 0, y: 0, section: true },
       ...winners.headers,
-      { label: sectionRoundName(bracket, 'grand', 0), x: grandX, y: grandLabelY, sub: true },
+      { label: sectionRoundName(bracket, 'grand', 0), x: grandX, y: grandLabelY, sub: true, round: { section: 'grand', round: 0 } },
       ...extra.headers,
       { label: 'Losers bracket', x: 0, y: losersTop, section: true },
       ...losers.headers,
@@ -260,6 +273,7 @@ export function layoutGrandFinal(bracket: Bracket, cw = CARD_W): Layout {
     x,
     y: y - EXTRA_LABEL_H,
     sub: true,
+    round: { section: match.section, round: match.round },
   });
   const extra = extraHeat(bracket, grandX, grandY, grandY - EXTRA_LABEL_H, cw);
 

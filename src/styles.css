@@ -116,7 +116,7 @@ body {
 }
 
 .mono,
-.time,
+.score,
 input.mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -476,6 +476,11 @@ input.invalid {
 }
 
 /* Third-place format: three selectable cards. */
+.panel-note {
+  margin: -8px 0 14px;
+  font-size: 14px;
+}
+
 .format-options {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -1114,6 +1119,14 @@ input.invalid {
 .spotlight__time {
   font-size: 18px;
   color: var(--muted);
+}
+
+/* Heats won in a best-of-3 match, large enough to read across the hall. */
+.spotlight__score {
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
 }
 
 .spotlight__vs {
@@ -1787,9 +1800,18 @@ input.invalid {
   overflow: hidden;
 }
 
-.team .time {
-  font-size: 13px;
+/* Heats won, or 1 / 0 for a decided single race: the leader of a best of 3 still being raced is
+   brighter, and the winner's score takes the accent. */
+.team .score {
+  min-width: 1ch;
+  font-size: 22px;
+  font-weight: 700;
+  text-align: right;
   color: var(--muted);
+}
+
+.team .score--lead {
+  color: var(--text);
 }
 
 button.team:not(:disabled) {
@@ -1815,12 +1837,12 @@ button.team:disabled {
   color: var(--accent-ink);
 }
 
-.team--winner .time {
-  color: var(--text);
+.team--winner .score {
+  color: var(--accent);
 }
 
 .team--loser .name,
-.team--loser .time,
+.team--loser .score,
 .team--loser .seed {
   opacity: 0.45;
 }
@@ -1863,9 +1885,46 @@ button.team:disabled {
   }
 }
 
-/* A smaller label above the third-place race. */
+/* A smaller label above the third-place race, with its heats beside it rather than below. */
 .round-header--sub {
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
+}
+
+.round-header:not(.round-header--sub) {
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* A round's heats, "1 heat" or "Best of 3", by its name: a button while editing. */
+.heats-chip {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  color: var(--muted);
+  text-shadow: none;
+}
+
+button.heats-chip {
+  cursor: pointer;
+}
+
+button.heats-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.heats-chip--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 
 /* "Winners bracket" / "Losers bracket" over each half when both are on one screen. */
@@ -2119,12 +2178,24 @@ button.team:disabled {
 :root[data-theme='light'] {
   --ring-2: color-mix(in oklab, var(--accent), white 45%);
   --ring-3: var(--brand-text);
-  /* Fainter and tighter by day: on pale glass a strong bloom tints the cards, washing out the
-     gray times, and in a packed first round neighboring blooms run together into one band. */
-  --bloom-hi: 0.3;
-  --bloom-lo: 0.18;
-  --bloom-still: 0.12;
+  /* Tighter by day, so in a packed first round neighboring blooms don't run together into one
+     band; strong enough to tint the pale glass in the main color, as the night cards are. */
+  --bloom-hi: 0.5;
+  --bloom-lo: 0.34;
+  --bloom-still: 0.22;
   --bloom-blur: 10px;
+}
+
+/* By day the bloom keeps to tints of the main color: with the ring's text-color stop in it, it
+   mixed into a gray mauve instead of the red glow the cards have at night. */
+.app--day .ring::before {
+  background: conic-gradient(
+    from var(--ring-a),
+    var(--ring-1),
+    var(--ring-2) 32%,
+    color-mix(in oklab, var(--ring-1), white 25%) 62%,
+    var(--ring-1)
+  );
 }
 
 .ring {
@@ -2559,8 +2630,8 @@ button.team:disabled {
   font-size: 14px;
 }
 
-.app--present .team .time {
-  font-size: 15px;
+.app--present .team .score {
+  font-size: 26px;
 }
 
 .app--present .team--bye,
@@ -2803,7 +2874,8 @@ button.team:disabled {
     justify-content: center;
   }
 
-  .toolbar .race-timer {
+  .toolbar .race-timer,
+  .toolbar .actions > .heats-all {
     grid-column: 1 / -1;
     display: flex;
   }

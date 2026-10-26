@@ -1,4 +1,4 @@
-import { isPlayable, matchLabel, podium, races } from './bracket';
+import { heatScore, isPlayable, matchLabel, podium, races } from './bracket';
 import { shownSeeds } from './entrants';
 import { formatTime } from './time';
 import type { Bracket, Match, SeededTeam, Section } from './types';
@@ -40,6 +40,8 @@ export interface RaceRow {
   teamA: string;
   teamB: string;
   winner: string;
+  /** "2–1" (heats won, team A first) once there's a score; blank before. */
+  score: string;
   status: 'Decided' | 'Ready' | 'Waiting';
 }
 
@@ -54,6 +56,10 @@ export function raceRows(bracket: Bracket): RaceRow[] {
     return t ? `${seeds.get(t.id) ?? t.seed} ${t.name}` : 'TBD';
   };
   const single = !bracket.losers.length;
+  const score = (m: Match) => {
+    const s = heatScore(m);
+    return s && (s[0] || s[1]) ? `${s[0]}–${s[1]}` : '';
+  };
   return races(bracket)
     .map((m) => ({
       section: single && m.section === 'main' ? 'Bracket' : SECTIONS[m.section],
@@ -61,14 +67,15 @@ export function raceRows(bracket: Bracket): RaceRow[] {
       teamA: team(m.a),
       teamB: team(m.b),
       winner: m.winner ? team(m.winner) : '',
+      score: score(m),
       status: m.winner ? 'Decided' : isPlayable(m) ? 'Ready' : 'Waiting',
     }));
 }
 
 export function resultsCsv(bracket: Bracket): string {
   return csv([
-    ['Section', 'Race', 'Team A', 'Team B', 'Winner', 'Status'],
-    ...raceRows(bracket).map((r) => [r.section, r.race, r.teamA, r.teamB, r.winner, r.status]),
+    ['Section', 'Race', 'Team A', 'Team B', 'Winner', 'Score', 'Status'],
+    ...raceRows(bracket).map((r) => [r.section, r.race, r.teamA, r.teamB, r.winner, r.score, r.status]),
   ]);
 }
 

@@ -1,7 +1,6 @@
 import { useRef } from 'react';
-import { findMatch, isByeMatch, isPlayable, matchLabel } from '../lib/bracket';
+import { bestOfOf, findMatch, heatScore, isByeMatch, isPlayable, matchLabel } from '../lib/bracket';
 import { CARD_H } from '../lib/layout';
-import { formatTime } from '../lib/time';
 import { BYE, type Bracket, type Match, type SlotValue } from '../lib/types';
 import { useFitText } from './useFitText';
 
@@ -36,8 +35,9 @@ interface Props {
 export function MatchCard({ bracket, seeds, match, x, y, width, present, onPick }: Props) {
   const bye = isByeMatch(match);
   const playable = isPlayable(match);
-  // Time-trial times explain the seeding, so they only appear in the opening round.
-  const showTime = match.section === 'main' && match.round === 0;
+  // Heats won (best of 3) or 1–0 once a single race is decided, where the time trial used to be.
+  const score = heatScore(match);
+  const bestOf = bestOfOf(match);
 
   const row = (slot: SlotValue, side: 0 | 1) => {
     if (slot === BYE) return <div className="team team--bye">Bye</div>;
@@ -54,19 +54,25 @@ export function MatchCard({ bracket, seeds, match, x, y, width, present, onPick 
 
     const team = bracket.teams[slot];
     const state = !match.winner || bye ? '' : match.winner === slot ? 'team--winner' : 'team--loser';
+    const mine = score?.[side];
+    const leading = !!score && !match.winner && score[side] > score[1 - side];
+    let action: string | null = bestOf > 1 ? 'add a heat win' : 'mark as winner';
+    if (match.winner === slot) action = bestOf > 1 ? 'clear the score' : 'undo the result';
+    // The loser of a decided best of 3: its score is settled, and clicking the winner clears it.
+    else if (match.winner && bestOf > 1) action = null;
     return (
       // Keyed by team so a newly advanced team animates in.
       <button
         key={slot}
         className={`team ${state}`}
-        disabled={!playable}
+        disabled={!playable || !action}
         aria-pressed={match.winner === slot}
-        title={playable ? `${team.name}: click to ${match.winner === slot ? 'undo the result' : 'mark as winner'}` : team.name}
+        title={playable && action ? `${team.name}: click to ${action}` : team.name}
         onClick={() => onPick(slot)}
       >
         <span className="seed">{seeds.get(slot) ?? team.seed}</span>
         <TeamName name={team.name} width={width} present={present} />
-        {showTime && <span className="time">{formatTime(team.timeMs)}</span>}
+        {mine !== undefined && <span className={`score ${leading ? 'score--lead' : ''}`}>{mine}</span>}
       </button>
     );
   };
