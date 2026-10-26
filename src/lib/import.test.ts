@@ -15,8 +15,8 @@ describe('reading a spreadsheet', () => {
   it('reads every column of the template by its header', () => {
     const rows = rowsFromWorkbook(csvFile(templateCsv()));
     expect(rows).toEqual([
-      { name: 'Example Racing', timeMs: 83450, checks: { checkedIn: true, inspected: true, obstacleTest: true } },
-      { name: 'Second Team', timeMs: 58200, checks: { checkedIn: true, inspected: false, obstacleTest: false } },
+      { name: 'Example Racing', timeMs: 83450, checks: { checkedIn: true, inspected: true } },
+      { name: 'Second Team', timeMs: 58200, checks: { checkedIn: true, inspected: false } },
     ]);
   });
 
@@ -59,7 +59,7 @@ describe('merging rows into the list', () => {
     ]);
     expect(result).toMatchObject({ added: 2, updated: 1, duplicates: 1, badTimes: 1, overflow: 0 });
     const [rockets, comets, meteors, bad] = result.entrants;
-    expect(rockets).toMatchObject({ min: '1', sec: '1', ms: '200', checks: { checkedIn: true, inspected: false, obstacleTest: false } });
+    expect(rockets).toMatchObject({ min: '1', sec: '1', ms: '200', checks: { checkedIn: true, inspected: false } });
     expect(comets.sec).toBe('40');
     expect(meteors).toMatchObject({ name: 'Meteors', min: '', sec: '55', ms: '000' });
     expect(bad).toMatchObject({ name: 'Bad Time', min: '', sec: '' });
@@ -67,8 +67,8 @@ describe('merging rows into the list', () => {
 });
 
 describe('eligibility checks', () => {
-  const cleared = { checkedIn: true, inspected: true, obstacleTest: true };
-  const teams = [team('A', '10', cleared), team('B', '11', { ...cleared, obstacleTest: false }), team('C', '12', cleared), team('D')];
+  const cleared = { checkedIn: true, inspected: true };
+  const teams = [team('A', '10', cleared), team('B', '11', { ...cleared, inspected: false }), team('C', '12', cleared), team('D')];
 
   it('seeds only cleared teams when checks are on', () => {
     expect(seedTeams(teams, true).map((t) => [t.name, t.seed])).toEqual([
@@ -83,7 +83,7 @@ describe('eligibility checks', () => {
     expect(validateEntrants(teams, true)).toEqual([]);
     expect(validateEntrants(teams)).toEqual(['1 team needs a valid time.']);
     expect(validateEntrants([team('A', '10', cleared), team('B', '11')], true)).toEqual([
-      'At least 2 teams must be checked in, inspected and through the obstacle test.',
+      'At least 2 teams must be checked in and inspected.',
     ]);
   });
 });

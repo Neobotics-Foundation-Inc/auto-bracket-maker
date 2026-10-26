@@ -17,7 +17,7 @@ interface Props {
   onConfirm: (request: ConfirmRequest) => void;
   format: ThirdPlaceFormat;
   onFormatChange: (format: ThirdPlaceFormat) => void;
-  /** Eligibility checks: only teams checked in, inspected and through the obstacle test are seeded. */
+  /** Eligibility checks: only teams checked in and inspected are seeded. */
   requireChecks: boolean;
   onRequireChecksChange: (on: boolean) => void;
   /** Panels after the teams, such as the event file and backups. */
@@ -192,8 +192,8 @@ export function SetupPage(props: Props) {
             <strong>Eligibility checks</strong>
             <span className="muted">
               {props.requireChecks
-                ? ` Only teams checked in, inspected and through the obstacle test are seeded: ${cleared} of ${entrants.length} cleared.`
-                : ' Track check-in, inspection and the obstacle test for each team, and seed only the cleared ones.'}
+                ? ` Only teams checked in and inspected are seeded: ${cleared} of ${entrants.length} cleared.`
+                : ' Track check-in and inspection for each team, and seed only the cleared ones.'}
             </span>
           </span>
         </label>
@@ -218,9 +218,9 @@ export function SetupPage(props: Props) {
           onDrop={onDrop}
           onClick={() => fileInput.current?.click()}
         >
-          Drop an Excel or CSV file here. With headers like the template’s (Team, Time trial, Checked in, Inspected,
-          Obstacle test), each column is read in; otherwise team names come from the first column. Teams already
-          listed get the sheet’s times and checks.
+          Drop an Excel or CSV file here. With headers like the template’s (Team, Time trial, Checked in, Inspected),
+          each column is read in; otherwise team names come from the first column. Teams already listed get the
+          sheet’s times and checks.
         </div>
         {notice && <p className={`notice notice--${notice.kind}`}>{notice.text}</p>}
 

@@ -11,10 +11,10 @@ export function newId(): string {
 
 export const normalizeName = (name: string) => name.trim().toLowerCase();
 
-export const NO_CHECKS: Checks = { checkedIn: false, inspected: false, obstacleTest: false };
+export const NO_CHECKS: Checks = { checkedIn: false, inspected: false };
 
-/** Checked in, inspected and through the obstacle test: allowed to race. */
-export const isCleared = (e: Entrant) => !!(e.checks?.checkedIn && e.checks.inspected && e.checks.obstacleTest);
+/** Checked in and inspected: allowed to race. */
+export const isCleared = (e: Entrant) => !!(e.checks?.checkedIn && e.checks.inspected);
 
 /** A row read from a spreadsheet: a name, and a time and checks where the sheet has them. */
 export interface ImportRow {
@@ -111,7 +111,7 @@ export function validateEntrants(entrants: Entrant[], requireChecks = false): st
   const problems: string[] = [];
   if (entrants.length < 2) problems.push('Add at least 2 teams.');
   else if (requireChecks && entrants.filter(isCleared).length < 2) {
-    problems.push('At least 2 teams must be checked in, inspected and through the obstacle test.');
+    problems.push('At least 2 teams must be checked in and inspected.');
   }
 
   const unnamed = entrants.filter((e) => !e.name.trim()).length;

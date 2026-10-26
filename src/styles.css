@@ -1006,6 +1006,28 @@ input.invalid {
   display: flex;
 }
 
+/* Present mode: only the race on track, centred over the bracket and large enough for the hall. */
+.queue--present {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 10px 24px;
+  font-size: 20px;
+}
+
+.queue--present .queue__now {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0;
+}
+
+.queue--present .queue__tag {
+  font-size: 14px;
+}
+
 .queue__moves .icon-btn:disabled {
   opacity: 0.3;
   cursor: default;

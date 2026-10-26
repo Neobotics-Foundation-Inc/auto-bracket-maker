@@ -6,7 +6,6 @@ import type { Bracket, Match } from '../lib/types';
 interface Props {
   bracket: Bracket;
   queue: Match[];
-  seeds: Map<string, number>;
   slotMs: number;
   onSlotChange: (ms: number) => void;
   onMove: (id: string, delta: -1 | 1) => void;
@@ -22,13 +21,31 @@ function useMinuteClock() {
   return now;
 }
 
-/** "3 MIT BWSI vs 30 Duke RoboRacers". */
-export function pairing(bracket: Bracket, match: Match, seeds: Map<string, number>): string {
-  const side = (slot: string | null) => {
-    const team = slot ? bracket.teams[slot] : undefined;
-    return team ? `${seeds.get(team.id) ?? team.seed} ${team.name}` : 'TBD';
-  };
+/** "MIT BWSI vs Duke RoboRacers". */
+export function pairing(bracket: Bracket, match: Match): string {
+  const side = (slot: string | null) => (slot ? bracket.teams[slot]?.name : undefined) ?? 'TBD';
   return `${side(match.a)} vs ${side(match.b)}`;
+}
+
+/** "Now on track · Quarterfinal 2 · MIT BWSI vs Duke RoboRacers". */
+function NowLine({ bracket, match }: { bracket: Bracket; match: Match }) {
+  return (
+    <p className="queue__now">
+      <span className="queue__tag">Now on track</span>
+      <span className="queue__race">{matchLabel(bracket, match)}</span>
+      <span className="queue__teams">{pairing(bracket, match)}</span>
+    </p>
+  );
+}
+
+/** Present mode's bracket view: just the race on track, above the bracket, for the hall. */
+export function NowOnTrack({ bracket, queue }: { bracket: Bracket; queue: Match[] }) {
+  if (!queue[0]) return null;
+  return (
+    <section className="queue queue--present" aria-label="Race on track">
+      <NowLine bracket={bracket} match={queue[0]} />
+    </section>
+  );
 }
 
 /**
@@ -36,7 +53,7 @@ export function pairing(bracket: Bracket, match: Match, seeds: Map<string, numbe
  * times, the races left and when the last should finish. Opened up, every ready race can be moved
  * up or down, for teams swapping slots.
  */
-export function QueuePanel({ bracket, queue, seeds, slotMs, onSlotChange, onMove }: Props) {
+export function QueuePanel({ bracket, queue, slotMs, onSlotChange, onMove }: Props) {
   const now = useMinuteClock();
   const [open, setOpen] = useState(false);
   const left = racesLeft(bracket);
@@ -47,11 +64,7 @@ export function QueuePanel({ bracket, queue, seeds, slotMs, onSlotChange, onMove
     <section className={`queue ${open ? 'queue--open' : ''}`} aria-label="Race queue">
       <div className="queue__summary">
         {current ? (
-          <p className="queue__now">
-            <span className="queue__tag">Now on track</span>
-            <span className="queue__race">{matchLabel(bracket, current)}</span>
-            <span className="queue__teams">{pairing(bracket, current, seeds)}</span>
-          </p>
+          <NowLine bracket={bracket} match={current} />
         ) : (
           <p className="queue__now muted">No race is ready: the next ones wait for results.</p>
         )}
@@ -60,7 +73,7 @@ export function QueuePanel({ bracket, queue, seeds, slotMs, onSlotChange, onMove
             <span className="queue__tag">On deck</span>
             {next.slice(0, 2).map((m, i) => (
               <span key={m.id} className="queue__deck-item">
-                <span className="mono">{clockTime(startsAt(i + 1, slotMs, now))}</span> {pairing(bracket, m, seeds)}
+                <span className="mono">{clockTime(startsAt(i + 1, slotMs, now))}</span> {pairing(bracket, m)}
               </span>
             ))}
           </p>
@@ -96,7 +109,7 @@ export function QueuePanel({ bracket, queue, seeds, slotMs, onSlotChange, onMove
             <li key={m.id} className="queue__item">
               <span className="mono queue__time">{i === 0 ? 'Now' : clockTime(startsAt(i, slotMs, now))}</span>
               <span className="queue__race">{matchLabel(bracket, m)}</span>
-              <span className="queue__teams">{pairing(bracket, m, seeds)}</span>
+              <span className="queue__teams">{pairing(bracket, m)}</span>
               <span className="queue__moves">
                 <button className="icon-btn" disabled={i === 0} onClick={() => onMove(m.id, -1)} aria-label={`Move ${matchLabel(bracket, m)} earlier`} title="Earlier">
                   ↑

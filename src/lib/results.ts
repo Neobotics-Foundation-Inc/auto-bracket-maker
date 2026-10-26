@@ -1,4 +1,4 @@
-import { allMatches, isByeMatch, isPlayable, matchLabel, podium } from './bracket';
+import { isPlayable, matchLabel, podium, races } from './bracket';
 import { shownSeeds } from './entrants';
 import { formatTime } from './time';
 import type { Bracket, Match, SeededTeam, Section } from './types';
@@ -43,7 +43,10 @@ export interface RaceRow {
   status: 'Decided' | 'Ready' | 'Waiting';
 }
 
-/** Every race except byes, in bracket order: who raced, who won, and where it stands. */
+/**
+ * Every race except byes (and the extra grand-final heat unless it's raced), in bracket order:
+ * who raced, who won, and where it stands.
+ */
 export function raceRows(bracket: Bracket): RaceRow[] {
   const seeds = shownSeeds(Object.values(bracket.teams));
   const team = (slot: Match['a']) => {
@@ -51,8 +54,7 @@ export function raceRows(bracket: Bracket): RaceRow[] {
     return t ? `${seeds.get(t.id) ?? t.seed} ${t.name}` : 'TBD';
   };
   const single = !bracket.losers.length;
-  return allMatches(bracket)
-    .filter((m) => !isByeMatch(m))
+  return races(bracket)
     .map((m) => ({
       section: single && m.section === 'main' ? 'Bracket' : SECTIONS[m.section],
       race: matchLabel(bracket, m),

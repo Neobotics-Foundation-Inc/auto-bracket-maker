@@ -44,7 +44,7 @@ export function roundName(size: number, round: number): string {
 /** Column heading for a round in any section. */
 export function sectionRoundName(bracket: Bracket, section: Section, round: number): string {
   if (section === 'third') return 'Third place';
-  if (section === 'grand') return 'Grand final';
+  if (section === 'grand') return round === 1 ? 'Grand final, extra heat' : 'Grand final';
   if (section === 'losers') return round === bracket.losers.length - 1 ? 'Losers final' : `Losers round ${round + 1}`;
   if (bracket.format === 'double' && round === bracket.rounds.length - 1) return 'Winners final';
   return roundName(bracket.size, round);
@@ -67,11 +67,33 @@ export function matchLabel(bracket: Bracket, match: Match): string {
 
 /** Every match, each one after the matches it draws its teams from. */
 export function allMatches(bracket: Bracket): Match[] {
-  const extra = [bracket.thirdPlace, ...bracket.losers.flat(), bracket.grandFinal].filter((m): m is Match => !!m);
+  const extra = [bracket.thirdPlace, ...bracket.losers.flat(), bracket.grandFinal, bracket.grandExtra].filter(
+    (m): m is Match => !!m,
+  );
   return [...bracket.rounds.flat(), ...extra];
 }
 
 export const findMatch = (bracket: Bracket, id: string) => allMatches(bracket).find((m) => m.id === id);
+
+/** The extra grand-final heat is raced: the losers-bracket champion won the grand final. */
+export const extraHeatNeeded = (bracket: Bracket) => !!bracket.grandExtra && isTeam(bracket.grandExtra.a);
+
+/**
+ * Whether to draw the extra heat: while the grand final is undecided (as "if needed"), and
+ * once it's needed. Not once the winners-bracket champion has won the grand final.
+ */
+export const showsExtraHeat = (bracket: Bracket) =>
+  !!bracket.grandExtra && (extraHeatNeeded(bracket) || !bracket.grandFinal?.winner);
+
+/** Every race that counts: no byes, and the extra heat only once it's needed. */
+export const races = (bracket: Bracket) =>
+  allMatches(bracket).filter((m) => !isByeMatch(m) && (m !== bracket.grandExtra || extraHeatNeeded(bracket)));
+
+/** The race that decides 1st and 2nd: the final, the grand final, or its extra heat. */
+export function deciderOf(bracket: Bracket): Match {
+  if (extraHeatNeeded(bracket)) return bracket.grandExtra!;
+  return bracket.grandFinal ?? bracket.rounds[bracket.rounds.length - 1][0];
+}
 
 export function loserOf(m: Match): SlotValue {
   if (!m.winner) return null;
@@ -94,6 +116,13 @@ function decide(m: Match): SlotValue {
 function resolve(bracket: Bracket) {
   const byId = new Map<string, Match>();
   for (const m of allMatches(bracket)) {
+    if (m === bracket.grandExtra) {
+      // The same two teams race again, but only if the losers-bracket champion (b) won.
+      const grand = bracket.grandFinal!;
+      const needed = isTeam(grand.winner) && grand.winner === grand.b;
+      m.a = needed ? grand.a : null;
+      m.b = needed ? grand.b : null;
+    }
     m.sources.forEach((source, side) => {
       if (!source) return;
       const from = byId.get(source.match)!;
@@ -112,6 +141,9 @@ const newMatch = (
   index: number,
   sources: Match['sources'] = [null, null],
 ): Match => ({ id, section, round, index, a: null, b: null, sources, winner: null, picked: null });
+
+// Its teams come from the grand final's result, set in resolve(), so it has no sources.
+const newExtraHeat = () => newMatch('grand2', 'grand', 1, 0);
 
 const winnerOf = (match: string): Source => ({ match, take: 'winner' });
 const loserFrom = (match: string): Source => ({ match, take: 'loser' });
@@ -185,6 +217,7 @@ export function buildBracket(teams: SeededTeam[], format: ThirdPlaceFormat = 'ra
     grandFinal: losers.length
       ? newMatch('grand', 'grand', 0, 0, [winnerOf(final.id), winnerOf(losers[losers.length - 1][0].id)])
       : null,
+    grandExtra: losers.length ? newExtraHeat() : null,
   };
   resolve(bracket);
   return bracket;
@@ -227,7 +260,7 @@ export interface Podium {
 
 export function podium(bracket: Bracket): Podium {
   const team = (slot: SlotValue) => (isTeam(slot) ? slot : null);
-  const final = bracket.grandFinal ?? bracket.rounds[bracket.rounds.length - 1][0];
+  const final = deciderOf(bracket);
   let third: string | null = null;
   if (bracket.format === 'race') {
     third = team(bracket.thirdPlace?.winner ?? null);
@@ -245,17 +278,26 @@ export function podium(bracket: Bracket): Podium {
   return { first: team(final.winner), second: team(loserOf(final)), third };
 }
 
-/** Counts real races (not byes) and how many have a result. */
+/**
+ * Counts real races (not byes) and how many have a result. The extra grand-final heat counts
+ * only once it's needed.
+ */
 export function progress(bracket: Bracket): { decided: number; total: number } {
-  const races = allMatches(bracket).filter((m) => !isByeMatch(m));
-  return { decided: races.filter((m) => m.winner).length, total: races.length };
+  const all = races(bracket);
+  return { decided: all.filter((m) => m.winner).length, total: all.length };
 }
 
 /**
  * Brackets saved before formats existed have no sources or picks: rebuild them as a
- * third-place-race bracket and replay their results.
+ * third-place-race bracket and replay their results. Double-elimination brackets saved before
+ * the extra grand-final heat existed get one.
  */
 export function migrateBracket(saved: Bracket): Bracket {
+  if (saved.format === 'double' && saved.grandFinal && saved.grandExtra === undefined) {
+    const bracket = { ...saved, grandExtra: newExtraHeat() };
+    resolve(bracket);
+    return bracket;
+  }
   if (saved.format) return saved;
   const old = saved as unknown as { teams: Bracket['teams']; rounds: Match[][]; thirdPlace?: Match | null };
   let bracket = buildBracket(

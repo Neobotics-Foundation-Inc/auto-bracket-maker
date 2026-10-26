@@ -4,7 +4,7 @@ import { BracketView } from './components/BracketView';
 import { ConfirmDialog, type ConfirmRequest } from './components/ConfirmDialog';
 import { CustomizePage } from './components/CustomizePage';
 import { PodiumView } from './components/PodiumView';
-import { QueuePanel } from './components/QueuePanel';
+import { NowOnTrack, QueuePanel } from './components/QueuePanel';
 import { RaceTimer } from './components/RaceTimer';
 import { PrintResults, ResultsActions, ResultsPanel } from './components/Results';
 import { Spotlight } from './components/Spotlight';
@@ -631,11 +631,12 @@ export default function App() {
               </div>
             </div>
           )}
-          {!present && (
+          {present ? (
+            <NowOnTrack bracket={bracket} queue={queue} />
+          ) : (
             <QueuePanel
               bracket={bracket}
               queue={queue}
-              seeds={bracketSeeds}
               slotMs={state.slotMs}
               onSlotChange={(ms) => patch({ slotMs: ms })}
               onMove={moveRace}

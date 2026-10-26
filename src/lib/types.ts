@@ -12,13 +12,12 @@ export interface TimeParts {
 }
 
 /**
- * What a car must pass before it may race, under the Roboracer rules: arriving (check-in), the
- * referees' hardware inspection, and the obstacle-avoidance test.
+ * What a car must pass before it may race, under the Roboracer rules: arriving (on-site check-in)
+ * and the referees' hardware inspection.
  */
 export interface Checks {
   checkedIn: boolean;
   inspected: boolean;
-  obstacleTest: boolean;
 }
 
 /** A row on the setup page, as the user typed it. */
@@ -83,6 +82,12 @@ export interface Bracket {
   thirdPlace: Match | null;
   /** Double elimination only: winners-bracket champion against losers-bracket champion. */
   grandFinal: Match | null;
+  /**
+   * Double elimination only: the extra heat the rules give when the losers-bracket champion wins
+   * the grand final, so the winners-bracket champion has lost only once. It has no teams unless
+   * that happens. Missing from brackets saved before it existed, until they're migrated.
+   */
+  grandExtra?: Match | null;
 }
 
 export interface EventInfo {
@@ -111,7 +116,7 @@ export interface AppState {
   losersFirstRound: number;
   /** The race countdown on the bracket view. */
   timer: RaceTimer;
-  /** Whether teams must be checked in, inspected and pass the obstacle test to be seeded. */
+  /** Whether teams must be checked in and inspected to be seeded. */
   requireChecks: boolean;
   /** Race ids in the order they're to be run, where the organizers have moved races. */
   queueOrder: string[];

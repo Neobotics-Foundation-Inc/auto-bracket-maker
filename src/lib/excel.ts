@@ -11,15 +11,14 @@ const COLUMNS = {
   time: /^(time.?trial|time|result|best.?time|lap.?time|fastest.?lap)/i,
   checkedIn: /^check(ed)?.?in/i,
   inspected: /^inspect/i,
-  obstacleTest: /^obstacle/i,
 } as const;
 
 /** The columns a template has, in the order they appear. */
-export const TEMPLATE_HEADERS = ['Team', 'Time trial', 'Checked in', 'Inspected', 'Obstacle test'];
+export const TEMPLATE_HEADERS = ['Team', 'Time trial', 'Checked in', 'Inspected'];
 
 /** A spreadsheet (CSV, which Excel opens) to fill in and upload: the headers and two examples. */
 export function templateCsv(): string {
-  return [TEMPLATE_HEADERS, ['Example Racing', '1:23.450', 'yes', 'yes', 'yes'], ['Second Team', '58.2', 'yes', 'no', '']]
+  return [TEMPLATE_HEADERS, ['Example Racing', '1:23.450', 'yes', 'yes'], ['Second Team', '58.2', 'yes', 'no']]
     .map((row) => row.join(','))
     .join('\r\n');
 }
@@ -42,8 +41,8 @@ export const readCheck = (cell: unknown): boolean =>
   /^(y|yes|true|x|✓|✔|pass|passed|ok|done|1)$/i.test(String(cell ?? '').trim());
 
 /**
- * Reads teams from the first sheet. With a header row (Team, Time trial, Checked in, Inspected,
- * Obstacle test, as in the template), each column is read by its header. Without one, names come
+ * Reads teams from the first sheet. With a header row (Team, Time trial, Checked in, Inspected, as
+ * in the template), each column is read by its header. Without one, names come
  * from the first non-empty column, as before, and a time from the column after it if it holds times.
  */
 export function rowsFromWorkbook(data: ArrayBuffer): ImportRow[] {
@@ -65,9 +64,8 @@ export function rowsFromWorkbook(data: ArrayBuffer): ImportRow[] {
       time: find(COLUMNS.time),
       checkedIn: find(COLUMNS.checkedIn),
       inspected: find(COLUMNS.inspected),
-      obstacleTest: find(COLUMNS.obstacleTest),
     };
-    const checkKeys = (['checkedIn', 'inspected', 'obstacleTest'] as const).filter((k) => cols[k] >= 0);
+    const checkKeys = (['checkedIn', 'inspected'] as const).filter((k) => cols[k] >= 0);
     return rows.slice(headerIndex + 1).flatMap((r) => {
       const name = String(r[nameCol] ?? '').trim();
       if (!name) return [];

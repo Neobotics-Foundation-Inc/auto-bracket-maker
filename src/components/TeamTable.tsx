@@ -6,7 +6,7 @@ import type { Checks, Entrant, TimeParts } from '../lib/types';
 interface Props {
   entrants: Entrant[];
   onChange: (entrants: Entrant[]) => void;
-  /** Shows each team's check-in, inspection and obstacle test, and seeds only cleared teams. */
+  /** Shows each team's check-in and inspection, and seeds only cleared teams. */
   requireChecks: boolean;
 }
 
@@ -36,10 +36,9 @@ function moveOnSeparator(input: HTMLInputElement) {
   inputs[inputs.indexOf(input) + 1]?.focus();
 }
 
-const CHECKS: { key: keyof Checks; short: string; label: string }[] = [
-  { key: 'checkedIn', short: 'In', label: 'Checked in' },
-  { key: 'inspected', short: 'Insp.', label: 'Inspected' },
-  { key: 'obstacleTest', short: 'Obst.', label: 'Passed the obstacle test' },
+const CHECKS: { key: keyof Checks; label: string }[] = [
+  { key: 'checkedIn', label: 'Checked in' },
+  { key: 'inspected', label: 'Inspected' },
 ];
 
 export function TeamTable({ entrants, onChange, requireChecks }: Props) {
@@ -68,7 +67,7 @@ export function TeamTable({ entrants, onChange, requireChecks }: Props) {
           <th className="num">Seed</th>
           <th>Team name</th>
           <th>Time-trial result (min : sec . ms)</th>
-          {requireChecks && <th title="Checked in · Inspected · Passed the obstacle test">Cleared</th>}
+          {requireChecks && <th title="Checked in · Inspected">Cleared</th>}
           <th aria-label="Remove" />
         </tr>
       </thead>
@@ -148,7 +147,7 @@ export function TeamTable({ entrants, onChange, requireChecks }: Props) {
                           title={`${c.label}: ${on ? 'yes' : 'not yet'}`}
                           onClick={() => update(entrant.id, { checks: { ...NO_CHECKS, ...entrant.checks, [c.key]: !on } })}
                         >
-                          {c.short}
+                          {c.label}
                         </button>
                       );
                     })}

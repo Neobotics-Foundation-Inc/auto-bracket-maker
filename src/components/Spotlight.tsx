@@ -56,7 +56,7 @@ export function Spotlight({ bracket, queue, seeds, onPick }: Props) {
             {next.slice(0, 3).map((m) => (
               <li key={m.id}>
                 <span className="spotlight__deck-race">{matchLabel(bracket, m)}</span>
-                <span>{pairing(bracket, m, seeds)}</span>
+                <span>{pairing(bracket, m)}</span>
               </li>
             ))}
           </ol>
