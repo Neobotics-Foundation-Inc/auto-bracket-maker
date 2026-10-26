@@ -2,9 +2,19 @@ import type { TimeParts } from './types';
 
 // Accepts "83.45", "1:23.45" or "1:02:03.5" (hours:minutes:seconds).
 const TIME_RE = /^(?:(?:(\d+):)?(\d+):)?(\d+(?:\.\d+)?)$/;
+// The app's own mm:ss:ms ("01:23:450"), as in its exported spreadsheets: three digits after the
+// last colon are milliseconds, where hours:minutes:seconds would have two.
+const MS_RE = /^(\d+):(\d{1,2}):(\d{3})$/;
 
 /** Parses a time-trial result into milliseconds, or null if it isn't a valid positive time. */
 export function parseTime(input: string): number | null {
+  const own = MS_RE.exec(input.trim());
+  if (own) {
+    const [, m, s, f] = own.map(Number);
+    if (s >= 60) return null;
+    const ms = (m * 60 + s) * 1000 + f;
+    return ms > 0 ? ms : null;
+  }
   const text = input.trim().replace(',', '.');
   const match = TIME_RE.exec(text);
   if (!match) return null;
@@ -49,15 +59,9 @@ export function partsFromMs(total: number): TimeParts {
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
-/** Formats milliseconds with at least two decimals: 5000 → "5.00", 83456 → "1:23.456". */
+/** Formats milliseconds as MIN:SEC:MS (two-digit minutes), folding hours into minutes: 5000 → "00:05:000", 83456 → "01:23:456". */
 export function formatTime(ms: number): string {
-  const hours = Math.floor(ms / 3_600_000);
-  const minutes = Math.floor((ms % 3_600_000) / 60_000);
+  const minutes = Math.floor(ms / 60_000);
   const seconds = Math.floor((ms % 60_000) / 1000);
-  let fraction = String(ms % 1000).padStart(3, '0');
-  if (fraction.endsWith('0')) fraction = fraction.slice(0, 2);
-
-  if (hours) return `${hours}:${pad2(minutes)}:${pad2(seconds)}.${fraction}`;
-  if (minutes) return `${minutes}:${pad2(seconds)}.${fraction}`;
-  return `${seconds}.${fraction}`;
+  return `${pad2(minutes)}:${pad2(seconds)}:${String(ms % 1000).padStart(3, '0')}`;
 }

@@ -83,7 +83,11 @@ export function StandingsView({ teams, present }: Props) {
                 <tr style={{ height: HEAD_H }}>
                   <th className="num">Seed</th>
                   <th>Team</th>
-                  <th className="num">Time</th>
+                  <th className="num">
+                    <span className="standings__head">
+                      Time <span className="standings__unit">(min:sec:ms)</span>
+                    </span>
+                  </th>
                   <th className="num">Gap</th>
                 </tr>
               </thead>

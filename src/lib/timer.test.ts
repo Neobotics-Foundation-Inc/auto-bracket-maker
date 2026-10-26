@@ -6,7 +6,7 @@ describe('race timer', () => {
     const t = newTimer();
     expect(DEFAULT_RACE_MS).toBe(180000);
     expect(phase(t, 0)).toBe('idle');
-    expect(formatCountdown(remaining(t, 0))).toBe('3:00');
+    expect(formatCountdown(remaining(t, 0))).toBe('03:00');
   });
 
   it('counts down, pauses and resumes without losing time', () => {
@@ -69,21 +69,21 @@ describe('race timer', () => {
     expect(reset(pause(start(newTimer(240000), 0), 5000))).toEqual(newTimer(240000));
   });
 
-  it('shows m:ss, reaching 0:00 only when time is up', () => {
-    expect(formatCountdown(180000)).toBe('3:00');
-    expect(formatCountdown(59001)).toBe('1:00');
-    expect(formatCountdown(9500)).toBe('0:10');
-    expect(formatCountdown(1)).toBe('0:01');
-    expect(formatCountdown(0)).toBe('0:00');
+  it('shows mm:ss, reaching 00:00 only when time is up', () => {
+    expect(formatCountdown(180000)).toBe('03:00');
+    expect(formatCountdown(59001)).toBe('01:00');
+    expect(formatCountdown(9500)).toBe('00:10');
+    expect(formatCountdown(1)).toBe('00:01');
+    expect(formatCountdown(0)).toBe('00:00');
   });
 
-  it('shows milliseconds for present mode, reaching 0:00.000 when time is up', () => {
-    expect(formatCountdownParts(180000)).toEqual({ main: '3:00', millis: '.000' });
-    expect(formatCountdownParts(179999)).toEqual({ main: '2:59', millis: '.999' });
-    expect(formatCountdownParts(61234.9)).toEqual({ main: '1:01', millis: '.234' });
-    expect(formatCountdownParts(5)).toEqual({ main: '0:00', millis: '.005' });
-    expect(formatCountdownParts(0)).toEqual({ main: '0:00', millis: '.000' });
-    expect(formatCountdownParts(-20)).toEqual({ main: '0:00', millis: '.000' });
+  it('shows milliseconds for present mode, reaching 00:00:000 when time is up', () => {
+    expect(formatCountdownParts(180000)).toEqual({ main: '03:00', millis: ':000' });
+    expect(formatCountdownParts(179999)).toEqual({ main: '02:59', millis: ':999' });
+    expect(formatCountdownParts(61234.9)).toEqual({ main: '01:01', millis: ':234' });
+    expect(formatCountdownParts(5)).toEqual({ main: '00:00', millis: ':005' });
+    expect(formatCountdownParts(0)).toEqual({ main: '00:00', millis: ':000' });
+    expect(formatCountdownParts(-20)).toEqual({ main: '00:00', millis: ':000' });
   });
 
   it('restores saved timers, falling back to a fresh one', () => {

@@ -56,7 +56,7 @@ describe('results', () => {
   it('writes the standings with shared seeds for tied times and the gap to the fastest', () => {
     const tied = [...teams(3)];
     tied[1] = { ...tied[1], timeMs: 1000 };
-    expect(standingsCsv(tied).split('\r\n')).toEqual(['Seed,Team,Time trial,Gap', '1,Team 1,1.00,', '1,Team 2,1.00,', '3,Team 3,3.00,+2.00']);
+    expect(standingsCsv(tied).split('\r\n')).toEqual(['Seed,Team,Time trial,Gap', '1,Team 1,00:01:000,', '1,Team 2,00:01:000,', '3,Team 3,00:03:000,+00:02:000']);
   });
 
   it('lists every race with its teams, winner and status', () => {

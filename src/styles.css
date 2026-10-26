@@ -2112,7 +2112,26 @@ button.heats-chip:hover {
   width: 80px;
 }
 
-.standings th:nth-child(3),
+/* The time column's units, MIN:SEC:MS, beside its heading and a step smaller.
+   Right-aligned in a flex row, so where the column is narrow (phones) the heading reaches left
+   into the empty end of the team heading rather than past the gap column. */
+.standings__head {
+  display: flex;
+  justify-content: flex-end;
+  align-items: baseline;
+  gap: 0.35em;
+  white-space: nowrap;
+}
+
+.standings__unit {
+  font-size: 0.85em;
+  letter-spacing: 0.04em;
+}
+
+.standings th:nth-child(3) {
+  width: 160px;
+}
+
 .standings th:nth-child(4) {
   width: 130px;
 }
@@ -2928,7 +2947,7 @@ button.heats-chip:hover {
   }
 
   /* The time and gap columns are as wide as their longest value (13px JetBrains Mono is 7.8px a
-     character), so a gap like +2:00.652 isn't cut off and short times leave room for names. */
+     character), so a gap like +02:00:652 isn't cut off and short times leave room for names. */
   .app:not(.app--present) .standings th:nth-child(3) {
     width: calc(var(--time-ch, 8) * 7.8px + 16px);
   }

@@ -18,11 +18,18 @@ describe('parseTime', () => {
 });
 
 describe('formatTime', () => {
-  it('shows at least two decimals', () => {
-    expect(formatTime(5000)).toBe('5.00');
-    expect(formatTime(83450)).toBe('1:23.45');
-    expect(formatTime(83456)).toBe('1:23.456');
-    expect(formatTime(3723500)).toBe('1:02:03.50');
+  it('shows mm:ss:ms, with hours folded into minutes', () => {
+    expect(formatTime(5000)).toBe('00:05:000');
+    expect(formatTime(83450)).toBe('01:23:450');
+    expect(formatTime(83456)).toBe('01:23:456');
+    expect(formatTime(3723500)).toBe('62:03:500');
+  });
+
+  it('reads its own format back', () => {
+    for (const ms of [5000, 83456, 3723500]) expect(parseTime(formatTime(ms))).toBe(ms);
+    // Two digits after the last colon are still hours:minutes:seconds.
+    expect(parseTime('1:02:03')).toBe(3723000);
+    expect(parseTime('00:75:000')).toBeNull();
   });
 });
 

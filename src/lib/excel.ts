@@ -18,13 +18,13 @@ export const TEMPLATE_HEADERS = ['Team', 'Time trial', 'Checked in', 'Inspected'
 
 /** A spreadsheet (CSV, which Excel opens) to fill in and upload: the headers and two examples. */
 export function templateCsv(): string {
-  return [TEMPLATE_HEADERS, ['Example Racing', '1:23.450', 'yes', 'yes'], ['Second Team', '58.2', 'yes', 'no']]
+  return [TEMPLATE_HEADERS, ['Example Racing', '01:23:450', 'yes', 'yes'], ['Second Team', '00:58:200', 'yes', 'no']]
     .map((row) => row.join(','))
     .join('\r\n');
 }
 
 /**
- * A time cell: text like "1:23.450" or "83.45", a plain number of seconds, or an Excel time
+ * A time cell: text like "01:23:450" (the app's own mm:ss:ms), "1:23.450" or "83.45", a plain number of seconds, or an Excel time
  * (a fraction of a day, as cells formatted mm:ss hold). Undefined when blank, null when unreadable.
  */
 export function readTime(cell: unknown): number | null | undefined {

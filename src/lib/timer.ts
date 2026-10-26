@@ -84,22 +84,24 @@ export function parseDuration(text: string): number | null {
   return null;
 }
 
-/** m:ss, rounding up so the display reaches 0:00 exactly when time is up. */
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** mm:ss, rounding up so the display reaches 00:00 exactly when time is up. */
 export function formatCountdown(ms: number): string {
   const total = Math.ceil(ms / 1000);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+  return `${pad2(Math.floor(total / 60))}:${pad2(total % 60)}`;
 }
 
 /**
- * m:ss and .mmm separately, for the present-mode timer. Milliseconds count down to the
- * moment, so it shows 0:00.000 exactly when time is up.
+ * mm:ss and :ms separately, for the present-mode timer. Milliseconds count down to the
+ * moment, so it shows 00:00:000 exactly when time is up.
  */
 export function formatCountdownParts(ms: number): { main: string; millis: string } {
   const total = Math.max(0, Math.floor(ms));
   const seconds = Math.floor(total / 1000);
   return {
-    main: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`,
-    millis: `.${String(total % 1000).padStart(3, '0')}`,
+    main: `${pad2(Math.floor(seconds / 60))}:${pad2(seconds % 60)}`,
+    millis: `:${String(total % 1000).padStart(3, '0')}`,
   };
 }
 

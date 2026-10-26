@@ -27,7 +27,7 @@ function onTimeKey(e: KeyboardEvent<HTMLInputElement>) {
 }
 
 /**
- * Typing ":" or "." moves to the next box, so "1:23.450" can be typed straight through.
+ * Typing ":" or "." moves to the next box, so "1:23:450" can be typed straight through.
  * Checked on the value rather than the key, since phone keyboards often send no key events.
  */
 function moveOnSeparator(input: HTMLInputElement) {
@@ -66,7 +66,7 @@ export function TeamTable({ entrants, onChange, requireChecks }: Props) {
           <th className="num">#</th>
           <th className="num">Seed</th>
           <th>Team name</th>
-          <th>Time-trial result (min : sec . ms)</th>
+          <th>Time-trial result (min : sec : ms)</th>
           {requireChecks && <th title="Checked in · Inspected">Cleared</th>}
           <th aria-label="Remove" />
         </tr>
@@ -104,7 +104,7 @@ export function TeamTable({ entrants, onChange, requireChecks }: Props) {
                   <div className="time-fields">
                     {TIME_FIELDS.map((field, f) => (
                       <span key={field.key} className="time-field">
-                        {f > 0 && <span className="time-sep">{f === 1 ? ':' : '.'}</span>}
+                        {f > 0 && <span className="time-sep">:</span>}
                         <input
                           data-time-input={field.key}
                           className={`mono ${timeInvalid ? 'invalid' : ''}`}
