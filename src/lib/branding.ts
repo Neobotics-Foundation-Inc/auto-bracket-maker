@@ -32,7 +32,11 @@ export function migrateBranding(saved: unknown): Branding {
   if (!saved || typeof saved !== 'object') return DEFAULT_BRANDING;
   // The first version kept one logo for both themes; venue backgrounds are no longer used.
   const { logo, logoDark, logoLight, version, colors } = saved as Partial<Branding> & { logo?: unknown };
-  const checked = colors && isHex(colors.main) && isHex(colors.text) ? colors : null;
+  // Colors saved before the dark theme had its own text color keep its white.
+  const checked =
+    colors && isHex(colors.main) && isHex(colors.text)
+      ? { main: colors.main, text: colors.text, textDark: isHex(colors.textDark) ? colors.textDark : '#ffffff' }
+      : null;
   return logoDark || logoLight
     ? { logoDark: imageOrNull(logoDark), logoLight: imageOrNull(logoLight), version, colors: checked }
     : { logoDark: imageOrNull(logo), logoLight: imageOrNull(logo), colors: checked };

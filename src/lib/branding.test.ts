@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adaptLogo, removeBackground } from './branding';
+import { adaptLogo, migrateBranding, removeBackground } from './branding';
 
 /** A size×size image filled with one color. */
 function solid(size: number, [r, g, b]: number[]) {
@@ -94,5 +94,17 @@ describe('adaptLogo', () => {
     expect(white[2]).toBeLessThan(60);
     expect(white[2]).toBeGreaterThan(white[0]);
     expect(black[0]).toBe(0);
+  });
+});
+
+describe('migrateBranding', () => {
+  it('gives colors saved before the dark theme had its own text color a white one', () => {
+    const { colors } = migrateBranding({ logoDark: null, logoLight: null, colors: { main: '#1f6bff', text: '#0f1f3d' } });
+    expect(colors).toEqual({ main: '#1f6bff', text: '#0f1f3d', textDark: '#ffffff' });
+  });
+
+  it('keeps a saved dark-theme text color', () => {
+    const colors = { main: '#1f6bff', text: '#0f1f3d', textDark: '#eaf1ff' };
+    expect(migrateBranding({ logoDark: null, logoLight: null, colors }).colors).toEqual(colors);
   });
 });

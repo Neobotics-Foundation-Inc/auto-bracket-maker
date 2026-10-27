@@ -1,8 +1,11 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { prepareLogo, type Branding } from '../lib/branding';
+import type { Theme } from '../lib/types';
 import { ThemeColorsPanel } from './ThemeColorsPanel';
 
 interface Props {
+  /** The theme on screen, whose text color the Text color field edits. */
+  theme: Theme;
   branding: Branding;
   /** Returns false when the browser couldn't store the images. */
   onBrandingChange: (branding: Branding) => boolean;
@@ -16,7 +19,7 @@ const NEOBOTICS_LOGO = {
   light: './brand/neobotics-logo-transparent.webp',
 };
 
-export function CustomizePage({ branding, onBrandingChange, onNext }: Props) {
+export function CustomizePage({ theme, branding, onBrandingChange, onNext }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState<Notice>(null);
   const [dragging, setDragging] = useState(false);
@@ -127,7 +130,7 @@ export function CustomizePage({ branding, onBrandingChange, onNext }: Props) {
         </div>
       </section>
 
-      <ThemeColorsPanel colors={branding.colors ?? null} onChange={(colors) => onBrandingChange({ ...branding, colors })} />
+      <ThemeColorsPanel theme={theme} colors={branding.colors ?? null} onChange={(colors) => onBrandingChange({ ...branding, colors })} />
 
       <footer className="generate-bar">
         <div className="status">

@@ -9,6 +9,7 @@ interface Props {
   onImport: (file: File) => Promise<string | null>;
   onRestore: (backup: Backup) => void;
   onDelete: (backup: Backup) => void;
+  onDeleteAll: () => void;
 }
 
 /** Drawn rather than an emoji, so it matches the other icons and takes the button's color. */
@@ -42,7 +43,7 @@ function when(at: number, now = Date.now()): string {
  * Keeping the event safe: save it as a file (to a USB stick, a shared drive or another laptop)
  * and open one again, and go back to an automatic backup from this browser.
  */
-export function BackupsPanel({ backups, onExport, onImport, onRestore, onDelete }: Props) {
+export function BackupsPanel({ backups, onExport, onImport, onRestore, onDelete, onDeleteAll }: Props) {
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +59,9 @@ export function BackupsPanel({ backups, onExport, onImport, onRestore, onDelete 
           </button>
           <button className="btn" onClick={() => input.current?.click()}>
             Import event
+          </button>
+          <button className="btn btn-quiet" disabled={backups.length === 0} onClick={onDeleteAll}>
+            Delete all
           </button>
         </div>
       </div>

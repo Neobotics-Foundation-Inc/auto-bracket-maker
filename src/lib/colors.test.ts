@@ -44,8 +44,9 @@ describe('readabilityWarnings', () => {
   });
 
   it('flags colors that would be hard to read', () => {
-    expect(readabilityWarnings({ main: '#0a0a12', text: NEOBOTICS_COLORS.text })).toHaveLength(1);
-    expect(readabilityWarnings({ main: '#fafafa', text: NEOBOTICS_COLORS.text })).toHaveLength(1);
-    expect(readabilityWarnings({ main: NEOBOTICS_COLORS.main, text: '#cccccc' })).toHaveLength(1);
+    expect(readabilityWarnings({ ...NEOBOTICS_COLORS, main: '#0a0a12' })).toHaveLength(1);
+    expect(readabilityWarnings({ ...NEOBOTICS_COLORS, main: '#fafafa' })).toHaveLength(1);
+    expect(readabilityWarnings({ ...NEOBOTICS_COLORS, text: '#cccccc' })).toHaveLength(1);
+    expect(readabilityWarnings({ ...NEOBOTICS_COLORS, textDark: '#555566' })).toHaveLength(1);
   });
 });

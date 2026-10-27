@@ -1,18 +1,24 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { inkOn, isHex, NEOBOTICS_COLORS, onLight, PALETTES, readabilityWarnings, type ThemeColors } from '../lib/colors';
+import type { Theme } from '../lib/types';
 
 interface Props {
+  /** The theme on screen: the Text color field shows and edits that theme's text color. */
+  theme: Theme;
   /** The event's colors, or null for the Neobotics ones. */
   colors: ThemeColors | null;
   onChange: (colors: ThemeColors | null) => void;
 }
 
-const FIELDS: { key: keyof ThemeColors; label: string; detail: string }[] = [
+const fields = (theme: Theme): { key: keyof ThemeColors; label: string; detail: string }[] => [
   { key: 'main', label: 'Main color', detail: 'Buttons, the active tab, highlights, winners and seed badges.' },
-  { key: 'text', label: 'Text color', detail: 'Headings and team names in the light theme.' },
+  theme === 'dark'
+    ? { key: 'textDark', label: 'Text color', detail: 'Headings and team names in the dark theme. Switch to the light theme to set its own.' }
+    : { key: 'text', label: 'Text color', detail: 'Headings and team names in the light theme. Switch to the dark theme to set its own.' },
 ];
 
-const same = (a: ThemeColors, b: ThemeColors) => a.main.toLowerCase() === b.main.toLowerCase() && a.text.toLowerCase() === b.text.toLowerCase();
+const same = (a: ThemeColors, b: ThemeColors) =>
+  (['main', 'text', 'textDark'] as const).every((key) => a[key].toLowerCase() === b[key].toLowerCase());
 
 /** One color: the browser's picker plus a hex box, which applies once it holds a full #rrggbb. */
 function ColorField({ label, detail, value, onChange }: { label: string; detail: string; value: string; onChange: (hex: string) => void }) {
@@ -42,7 +48,7 @@ function ColorField({ label, detail, value, onChange }: { label: string; detail:
   );
 }
 
-export function ThemeColorsPanel({ colors, onChange }: Props) {
+export function ThemeColorsPanel({ theme, colors, onChange }: Props) {
   const current = colors ?? NEOBOTICS_COLORS;
   const palette = PALETTES.find((p) => same(p.colors, current));
   const warnings = readabilityWarnings(current);
@@ -53,6 +59,7 @@ export function ThemeColorsPanel({ colors, onChange }: Props) {
     '--brand-light': onLight(current.main),
     '--brand-light-ink': inkOn(onLight(current.main)),
     '--brand-text': current.text,
+    '--brand-text-dark': current.textDark,
   } as CSSProperties;
 
   const choose = (next: ThemeColors) => onChange(same(next, NEOBOTICS_COLORS) ? null : next);
@@ -80,7 +87,7 @@ export function ThemeColorsPanel({ colors, onChange }: Props) {
             onClick={() => choose(p.colors)}
           >
             <span className="palette__swatch" style={{ background: p.colors.main }} />
-            <span className="palette__swatch palette__swatch--text" style={{ background: p.colors.text }} />
+            <span className="palette__swatch palette__swatch--text" style={{ background: theme === 'dark' ? p.colors.textDark : p.colors.text }} />
             <span className="palette__name">{p.name}</span>
           </button>
         ))}
@@ -88,7 +95,7 @@ export function ThemeColorsPanel({ colors, onChange }: Props) {
 
       <div className="customize-body">
         <div className="color-fields">
-          {FIELDS.map((f) => (
+          {fields(theme).map((f) => (
             <ColorField
               key={f.key}
               label={f.label}

@@ -199,8 +199,9 @@ export default function App() {
       '--brand-light': onLight(colors.main),
       '--brand-light-ink': inkOn(onLight(colors.main)),
       '--brand-text': colors.text,
+      '--brand-text-dark': colors.textDark,
     };
-    for (const name of ['--brand', '--brand-ink', '--brand-light', '--brand-light-ink', '--brand-text']) {
+    for (const name of ['--brand', '--brand-ink', '--brand-light', '--brand-light-ink', '--brand-text', '--brand-text-dark']) {
       if (vars) root.setProperty(name, vars[name as keyof typeof vars]);
       else root.removeProperty(name);
     }
@@ -337,6 +338,16 @@ export default function App() {
       message: `${describeEvent(backup.content)}. It can’t be brought back once deleted.`,
       confirmLabel: 'Delete',
       onConfirm: () => setBackups((list) => saveBackups(withoutBackup(list, backup))),
+    });
+  }
+
+  function deleteAllBackups() {
+    setConfirmRequest({
+      title: backups.length === 1 ? 'Delete the only backup?' : `Delete all ${backups.length} backups?`,
+      message:
+        'Every backup kept in this browser is deleted, and they can’t be brought back. The event itself stays as it is, and new backups are taken as it changes. Export the event first to keep a copy.',
+      confirmLabel: 'Delete all',
+      onConfirm: () => setBackups(saveBackups([])),
     });
   }
 
@@ -536,7 +547,7 @@ export default function App() {
       )}
 
       {view === 'customize' && (
-        <CustomizePage branding={branding} onBrandingChange={changeBranding} onNext={() => setView('setup')} />
+        <CustomizePage theme={theme} branding={branding} onBrandingChange={changeBranding} onNext={() => setView('setup')} />
       )}
 
       {view === 'setup' && (
@@ -564,6 +575,7 @@ export default function App() {
             onImport={importEvent}
             onRestore={restoreBackup}
             onDelete={deleteBackup}
+            onDeleteAll={deleteAllBackups}
           />
         </SetupPage>
       )}

@@ -20,7 +20,7 @@ function eventWithResult(): AppState {
   };
 }
 
-const branding = { logoDark: 'data:image/webp;base64,AAAA', logoLight: 'data:image/png;base64,BBBB', colors: { main: '#1f6bff', text: '#0f1f3d' } };
+const branding = { logoDark: 'data:image/webp;base64,AAAA', logoLight: 'data:image/png;base64,BBBB', colors: { main: '#1f6bff', text: '#0f1f3d', textDark: '#eaf1ff' } };
 
 describe('event files', () => {
   it('round-trips an event with its results, logo and colors', () => {

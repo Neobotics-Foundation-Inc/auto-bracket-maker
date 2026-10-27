@@ -4,18 +4,20 @@ export interface ThemeColors {
   main: string;
   /** Headings and team names in the light theme. */
   text: string;
+  /** Headings and team names in the dark theme. */
+  textDark: string;
 }
 
-export const NEOBOTICS_COLORS: ThemeColors = { main: '#ff0033', text: '#1b2036' };
+export const NEOBOTICS_COLORS: ThemeColors = { main: '#ff0033', text: '#1b2036', textDark: '#ffffff' };
 
 /** Ready-made palettes; the first is the Neobotics default. */
 export const PALETTES: { name: string; colors: ThemeColors }[] = [
   { name: 'Neobotics', colors: NEOBOTICS_COLORS },
-  { name: 'Electric blue', colors: { main: '#1f6bff', text: '#0f1f3d' } },
-  { name: 'Track green', colors: { main: '#12b76a', text: '#0d2a1c' } },
-  { name: 'Safety orange', colors: { main: '#ff7a00', text: '#2b1a0c' } },
-  { name: 'Violet', colors: { main: '#8b5cf6', text: '#1f1638' } },
-  { name: 'Gold', colors: { main: '#f5b700', text: '#2a2108' } },
+  { name: 'Electric blue', colors: { main: '#1f6bff', text: '#0f1f3d', textDark: '#eaf1ff' } },
+  { name: 'Track green', colors: { main: '#12b76a', text: '#0d2a1c', textDark: '#e8faf0' } },
+  { name: 'Safety orange', colors: { main: '#ff7a00', text: '#2b1a0c', textDark: '#fff3e6' } },
+  { name: 'Violet', colors: { main: '#8b5cf6', text: '#1f1638', textDark: '#f1ebff' } },
+  { name: 'Gold', colors: { main: '#f5b700', text: '#2a2108', textDark: '#fff8e0' } },
 ];
 
 const HEX = /^#[0-9a-f]{6}$/i;
@@ -62,11 +64,13 @@ export function onLight(hex: string): string {
 }
 
 /** Warnings for colors that would be hard to read, empty when both are fine. */
-export function readabilityWarnings({ main, text }: ThemeColors): string[] {
+export function readabilityWarnings({ main, text, textDark }: ThemeColors): string[] {
   const warnings: string[] = [];
   // Large text and UI parts need 3:1; body text needs 4.5:1 (WCAG AA).
   if (contrast(main, '#000000') < 3) warnings.push('The main color is very dark: highlights will be hard to see in the dark theme.');
   if (contrast(main, '#ffffff') < 1.6) warnings.push('The main color is very light: the light theme uses a deeper shade of it so it stays readable.');
   if (contrast(text, '#ffffff') < 4.5) warnings.push('The text color is too light to read comfortably on the light theme’s white panels.');
+  // The dark theme's smoky panels are about Tarmac Blue where the stadium lights show through.
+  if (contrast(textDark, '#1b2036') < 4.5) warnings.push('The dark theme’s text color is too dark to read comfortably on its dark panels.');
   return warnings;
 }

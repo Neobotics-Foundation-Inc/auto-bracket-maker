@@ -36,13 +36,14 @@
   --nb-beige-dark: #ebe3da;
   --nb-carbon: #1d1d27;
   /* The event's theme colors (Customize page sets these on <html>); the Neobotics ones by default.
-     --brand is the main color, --brand-ink the label color on it, --brand-text the light theme's text. */
+     --brand is the main color, --brand-ink the label color on it, --brand-text and --brand-text-dark the light and dark themes' text. */
   --brand: var(--nb-red);
   --brand-ink: #ffffff;
   /* The main color on the light theme, deepened if needed to read on white. */
   --brand-light: var(--brand);
   --brand-light-ink: var(--brand-ink);
   --brand-text: var(--nb-tarmac);
+  --brand-text-dark: #ffffff;
   --font-heading: 'Kernel', 'Space Grotesk Variable', sans-serif;
   --font-body: 'Space Grotesk Variable', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -58,13 +59,13 @@
   --surface: rgb(0 0 0 / 0.5);
   --surface-2: rgb(0 0 0 / 0.4);
   --border: rgb(255 255 255 / 0.12);
-  --text: #ffffff;
-  --muted: rgb(255 255 255 / 0.72);
+  --text: var(--brand-text-dark);
+  --muted: color-mix(in srgb, var(--brand-text-dark) 72%, transparent);
   --accent: var(--brand);
   --accent-hover: color-mix(in srgb, var(--brand), white 12%);
   --accent-ink: var(--brand-ink);
   --accent-soft: color-mix(in srgb, var(--brand) 16%, transparent);
-  --line: rgb(255 255 255 / 0.34);
+  --line: color-mix(in srgb, var(--brand-text-dark) 34%, transparent);
   --danger: #ff4d6f;
   --ok: #5ee08f;
   --shadow: 0 8px 24px rgb(0 0 0 / 0.45);
@@ -629,7 +630,7 @@ input.invalid {
 
 .logo-preview--dark {
   background: #000;
-  color: rgb(255 255 255 / 0.6);
+  color: color-mix(in srgb, var(--brand-text-dark) 60%, transparent);
 }
 
 .logo-preview--light {
@@ -766,7 +767,7 @@ input.invalid {
 
 .theme-preview--dark {
   background: #000;
-  color: #fff;
+  color: var(--brand-text-dark);
 }
 
 .theme-preview--light {
@@ -2601,7 +2602,7 @@ button.heats-chip:hover {
 }
 
 .app--world .round-header {
-  color: rgb(255 255 255 / 0.85);
+  color: color-mix(in srgb, var(--brand-text-dark) 85%, transparent);
 }
 
 .app--world .podium-place--1 .podium-place__step {

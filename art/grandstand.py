@@ -220,16 +220,23 @@ for t in range(TIERS):
         y0 = STAND_Y0 + 1.0 + block * (stand_len / 6)
         seat = box(f"Seat{t}_{block}", (0.5, 0.46, 0.42), (x - 0.12, y0, h + 0.21), seat_red if t in (6, 7) else seat_mat)
         array(seat, int((stand_len / 6 - 2.0) / 0.55), (0, 0.55, 0))
-# Back wall.
 back_x = STAND_X + TIERS * TREAD + 0.3
-box("BackWall", (0.6, stand_len, 13.5), (back_x, (STAND_Y0 + STAND_Y1) / 2, 6.75), concrete)
 
-# Roof: cantilevered slab tilting up towards the track, on light gray columns.
+# Roof: cantilevered slab dipping towards the track, on light gray columns.
 ROOF_H = 14.5
 roof_depth = TIERS * TREAD + 4.5
 roof_cx = STAND_X + roof_depth / 2 - 3.0
 roof = box("Roof", (roof_depth, stand_len + 2, 0.5), (roof_cx, (STAND_Y0 + STAND_Y1) / 2, ROOF_H), roof_mat,
            rot=(0, math.radians(-4), 0))
+
+
+def roof_under(x):
+    """The underside of the roof slab at x: it dips 4° towards the track."""
+    return ROOF_H - 0.25 + (x - roof_cx) * math.tan(math.radians(4))
+
+
+# Back wall, up to the roof's underside so no sky shows between them.
+box("BackWall", (0.6, stand_len, roof_under(back_x)), (back_x, (STAND_Y0 + STAND_Y1) / 2, roof_under(back_x) / 2), concrete)
 col = box("Column", (0.45, 0.45, ROOF_H), (back_x - 0.6, STAND_Y0 + 2, ROOF_H / 2), structure)
 array(col, 9, (0, stand_len / 8.2, 0))
 # Front fascia beam with white and red LED lines, like the garage's beam.
@@ -238,11 +245,14 @@ front_z = ROOF_H - roof_depth / 2 * math.sin(math.radians(4))
 box("Fascia", (0.6, stand_len + 2, 1.4), (front_x, (STAND_Y0 + STAND_Y1) / 2, front_z - 0.3), roof_mat)
 box("FasciaRed", (0.64, stand_len + 2, 0.07), (front_x, (STAND_Y0 + STAND_Y1) / 2, front_z - 0.75), led_red)
 box("FasciaWhite", (0.64, stand_len + 2, 0.07), (front_x, (STAND_Y0 + STAND_Y1) / 2, front_z + 0.2), led_white)
-# Grid of white LED panels under the roof, like the garage ceiling.
-for row in range(4):
-    px = front_x + 2.5 + row * (roof_depth - 5) / 3
-    pz = ROOF_H - 0.3 - (roof_cx - px) * math.tan(math.radians(4)) * -1
-    panel = box(f"Panel{row}", (1.6, 3.2, 0.05), (px, STAND_Y0 + 3, pz - 0.05), led_panel)
+# Two rows of white LED panels under the roof, like the garage ceiling, a third and two thirds of
+# the way back: flush against its underside and tilted with it, so they read as fittings in the
+# roof rather than floating below it.
+PANEL_ROWS = [roof_depth * k / 3 for k in (1, 2)]  # back from the fascia
+for row, depth in enumerate(PANEL_ROWS):
+    px = front_x + depth
+    panel = box(f"Panel{row}", (1.6, 3.2, 0.05), (px, STAND_Y0 + 3, roof_under(px) - 0.03), led_panel,
+                rot=(0, math.radians(-4), 0))
     array(panel, 22, (0, stand_len / 22.5, 0))
 # Soft light from the panels onto the stands.
 bpy.ops.object.light_add(type="AREA", location=(roof_cx, (STAND_Y0 + STAND_Y1) / 2, ROOF_H - 1.0))
@@ -261,13 +271,13 @@ for t in range(TIERS):
     h = 0.6 + t * RISE
     arc_band(f"TurnTier{t}", r, r + TREAD, 0, h, concrete)
     arc_band(f"TurnSeats{t}", r + 0.11, r + 0.61, h, h + 0.42, seat_red if t in (6, 7) else seat_mat)
-arc_band("TurnBackWall", TURN_R + back_x - 0.3, TURN_R + back_x + 0.3, 0, 13.5, concrete)
+arc_band("TurnBackWall", TURN_R + back_x - 0.3, TURN_R + back_x + 0.3, 0, ROOF_H - 0.45, concrete)
 arc_band("TurnRoof", TURN_R + front_x, TURN_R + front_x + roof_depth, ROOF_H - 0.45, ROOF_H + 0.05, roof_mat)
 arc_band("TurnFascia", TURN_R + front_x - 0.3, TURN_R + front_x + 0.3, front_z - 1.0, front_z + 0.4, roof_mat)
 arc_band("TurnFasciaRed", TURN_R + front_x - 0.32, TURN_R + front_x - 0.28, front_z - 0.785, front_z - 0.715, led_red)
 arc_band("TurnFasciaWhite", TURN_R + front_x - 0.32, TURN_R + front_x - 0.28, front_z + 0.165, front_z + 0.235, led_white)
-for row in range(4):
-    r = TURN_R + front_x + 2.5 + row * (roof_depth - 5) / 3
+for row, depth in enumerate(PANEL_ROWS):
+    r = TURN_R + front_x + depth
     striped_arc(f"TurnPanels{row}", r - 0.8, r + 0.8, 0.05, 0, math.pi / 2, 3.2, first=led_panel, second=roof_mat,
                 z0=ROOF_H - 0.5)
 for k in range(5):
@@ -581,9 +591,11 @@ def make_camera(name, loc, target, lens):
     return cam
 
 
-desktop_cam = make_camera("CamDesktop", (-1.5, -16, 1.5), (5.5, 40, 4.2), 22)
-# Phones: on the track's center line, looking straight down the straight, like the desktop view.
-mobile_cam = make_camera("CamMobile", (0, -16, 1.5), (0.5, 40, 4.2), 19)
+DESKTOP_VIEW = ((-1.5, -16, 1.5), (5.5, 40, 4.2), 22)
+desktop_cam = make_camera("CamDesktop", *DESKTOP_VIEW)
+# Phones: the desktop view turned portrait, from the same spot at the same angle and lens; the
+# frame's long side runs up the screen, so it shows the middle of the desktop view plus more sky and track.
+mobile_cam = make_camera("CamMobile", *DESKTOP_VIEW)
 
 # ---------------------------------------------------------------- sky
 world = bpy.data.worlds.new("Day" if DAY else "Night")
@@ -743,11 +755,11 @@ else:
     stars = maths("ADD", star_layer(90, 0.09, 0.82, 6.0), star_layer(220, 0.16, 0.7, 2.2))
     stars = maths("MULTIPLY", stars, remap(elevation, 0.03, 0.2))
 
-    # The moon, in open sky in each framing: between the floodlight poles on the left of the
-    # desktop view, above the gantry and below a phone's top bar in the portrait one. aim_moon sets it
-    # before each render.
+    # The moon, in open sky between the floodlight poles on the left of the desktop view. The phone
+    # view shares its camera angle, so the moon is in the same place in the sky there too, above the
+    # gantry and below a phone's top bar.
     MOON_RADIUS = math.radians(1.7)
-    MOON_AT = {desktop_cam: (600, 120, 1920, 1080), mobile_cam: (150, 280, 608, 1080)}
+    MOON_AT = (600, 120, 1920, 1080)
     toward_moon = nodes.new("ShaderNodeVectorMath")
     toward_moon.operation = "DOT_PRODUCT"
     links.new(direction, toward_moon.inputs[0])
@@ -769,8 +781,8 @@ else:
     moon = maths("MULTIPLY", maths("MULTIPLY", disc, surface), 3.2)
     halo = maths("MULTIPLY", maths("POWER", remap(closeness, math.cos(MOON_RADIUS * 9), 1.0), 3.0), 0.05)
 
-    def aim_moon(cam):
-        toward_moon.inputs[1].default_value = across.inputs[1].default_value = pixel_direction(cam, *MOON_AT[cam])
+    def aim_moon():
+        toward_moon.inputs[1].default_value = across.inputs[1].default_value = pixel_direction(desktop_cam, *MOON_AT)
 
     painted = add(
         emit((0.004, 0.006, 0.014), 0.6),
@@ -836,7 +848,7 @@ def bloom(pixels, w, h):
 def render(cam, w, h, samples, path):
     scene.camera = cam
     if not DAY:
-        aim_moon(cam)
+        aim_moon()
     scene.render.resolution_x = w
     scene.render.resolution_y = h
     scene.render.resolution_percentage = 100
