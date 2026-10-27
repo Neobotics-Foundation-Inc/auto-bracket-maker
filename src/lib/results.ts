@@ -45,16 +45,10 @@ export interface RaceRow {
   status: 'Decided' | 'Ready' | 'Waiting';
 }
 
-/**
- * Every race except byes (and the extra grand-final heat unless it's raced), in bracket order:
- * who raced, who won, and where it stands.
- */
+/** Every race except byes, in bracket order: who raced, who won, and where it stands. */
 export function raceRows(bracket: Bracket): RaceRow[] {
-  const seeds = shownSeeds(Object.values(bracket.teams));
-  const team = (slot: Match['a']) => {
-    const t = slot ? bracket.teams[slot] : undefined;
-    return t ? `${seeds.get(t.id) ?? t.seed} ${t.name}` : 'TBD';
-  };
+  // Names only: the seeds are in the standings.
+  const team = (slot: Match['a']) => (slot ? bracket.teams[slot]?.name : undefined) ?? 'TBD';
   const single = !bracket.losers.length;
   const score = (m: Match) => {
     const s = heatScore(m);

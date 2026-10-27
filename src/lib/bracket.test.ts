@@ -4,7 +4,6 @@ import {
   allMatches,
   allRoundsBestOf,
   buildBracket,
-  extraHeatNeeded,
   findMatch,
   heatScore,
   isPlayable,
@@ -19,7 +18,6 @@ import {
   seedOrder,
   setAllBestOf,
   setRoundBestOf,
-  showsExtraHeat,
 } from './bracket';
 import { raceRows } from './results';
 import { seedTeams, shownSeeds } from './entrants';
@@ -245,58 +243,16 @@ describe('double elimination', () => {
     expect(progress(b)).toEqual({ decided: 14, total: 14 });
   });
 
-  it('has no extra heat when the winners-bracket champion wins the grand final', () => {
-    const b = playAll(buildBracket(makeTeams(8), 'double'));
-    expect(extraHeatNeeded(b)).toBe(false);
-    expect(showsExtraHeat(b)).toBe(false);
-    expect(match(b, 'grand2')).toMatchObject({ a: null, b: null, winner: null });
-    expect(layoutCombined(b).cards.some((c) => c.match.id === 'grand2')).toBe(false);
-    expect(raceRows(b).map((r) => r.race)).not.toContain('Grand final, extra heat');
-  });
-
-  it('races an extra heat when the losers-bracket champion wins the grand final', () => {
+  it('lets the grand final decide the title, whoever wins it', () => {
     // Seed 1 loses the winners final to seed 2, wins the losers bracket, then beats seed 2.
-    let b = playAll(buildBracket(makeTeams(8), 'double'), { r2m0: 't2', grand: 't1', grand2: 't2' });
-    b = advanceWinner(b, 'grand2', 't2'); // undo the extra heat, to see the state before it
+    const b = playAll(buildBracket(makeTeams(8), 'double'), { r2m0: 't2', grand: 't1' });
     expect(match(b, 'grand')).toMatchObject({ a: 't2', b: 't1', winner: 't1' });
-    expect(extraHeatNeeded(b)).toBe(true);
-    const extra = match(b, 'grand2');
-    expect(extra).toMatchObject({ a: 't2', b: 't1', winner: null });
-    expect(isPlayable(extra)).toBe(true);
-    expect(matchLabel(b, extra)).toBe('Grand final, extra heat');
-    // Both teams have lost once, so nobody has won yet.
-    expect(podium(b)).toMatchObject({ first: null, second: null });
-    expect(progress(b)).toEqual({ decided: 14, total: 15 });
-    expect(raceRows(b).at(-1)).toMatchObject({ race: 'Grand final, extra heat', status: 'Ready' });
-    expect(layoutCombined(b).headers.map((h) => h.label)).toContain('Extra heat');
-
-    // The extra heat decides the title either way.
-    const t2 = advanceWinner(b, 'grand2', 't2');
-    expect(podium(t2)).toMatchObject({ first: 't2', second: 't1' });
-    expect(progress(t2)).toEqual({ decided: 15, total: 15 });
-    expect(podium(advanceWinner(b, 'grand2', 't1'))).toMatchObject({ first: 't1', second: 't2' });
-  });
-
-  it('drops the extra heat when the grand final result is corrected', () => {
-    let b = playAll(buildBracket(makeTeams(8), 'double'), { r2m0: 't2', grand: 't1', grand2: 't1' });
-    expect(podium(b).first).toBe('t1');
-    b = advanceWinner(b, 'grand', 't2');
-    expect(match(b, 'grand2')).toMatchObject({ a: null, b: null, winner: null, picked: null });
-    expect(podium(b)).toMatchObject({ first: 't2', second: 't1' });
+    expect(podium(b)).toMatchObject({ first: 't1', second: 't2' });
     expect(progress(b)).toEqual({ decided: 14, total: 14 });
-  });
-
-  it('shows the extra heat as "if needed" until the grand final is decided', () => {
-    const b = buildBracket(makeTeams(8), 'double');
-    expect(showsExtraHeat(b)).toBe(true);
-    expect(progress(b).total).toBe(14);
+    expect(raceRows(b).at(-1)).toMatchObject({ race: 'Grand final', status: 'Decided' });
     const layout = layoutCombined(b);
-    expect(layout.headers.map((h) => h.label)).toContain('Extra heat, if needed');
-    const [grand, extra] = ['grand', 'grand2'].map((id) => layout.cards.find((c) => c.match.id === id)!);
-    expect(extra.y).toBe(grand.y);
-    expect(extra.x).toBeGreaterThan(grand.x + 232);
-    expect(extra.x + 232).toBeLessThanOrEqual(layout.width);
-    expect(buildBracket(makeTeams(8), 'race').grandExtra).toBeNull();
+    expect(layout.cards.filter((c) => c.match.section === 'grand')).toHaveLength(1);
+    expect(layout.headers.map((h) => h.label).filter((l) => /extra/i.test(l))).toEqual([]);
   });
 
   it('settles byes in the losers bracket without races', () => {
@@ -389,16 +345,14 @@ describe('heats', () => {
     b = setAllBestOf(b, 3);
     expect(allRoundsBestOf(b)).toBe(3);
     expect(allMatches(b).filter((m) => m.bestOf === 1).map((m) => m.id)).toEqual(['r0m0']);
-    expect(b.grandExtra!.bestOf).toBeUndefined();
     b = setRoundBestOf(b, 'main', 1, 1);
     expect(allRoundsBestOf(b)).toBeNull();
     expect(allRoundsBestOf(setAllBestOf(b, 1))).toBe(1);
   });
 
-  it('keeps the extra grand-final heat a single race, and each round’s heats through a reset', () => {
+  it('keeps each round’s heats through a reset', () => {
     const b = buildBracket(makeTeams(8), 'double', 3);
     expect(b.grandFinal!.bestOf).toBe(3);
-    expect(b.grandExtra!.bestOf).toBeUndefined();
     const reset = resetBracket(setRoundBestOf(b, 'losers', 0, 1));
     expect(roundBestOf(reset, 'losers', 0)).toBe(1);
     expect(roundBestOf(reset, 'main', 0)).toBe(3);
@@ -510,22 +464,15 @@ describe('layout', () => {
     expect(layoutLosers(b).cards.some((c) => c.match.id === 'grand')).toBe(false);
 
     const layout = layoutGrandFinal(b);
-    expect(layout.cards.map((c) => c.match.id)).toEqual(['r5m0', 'l9m0', 'grand', 'grand2']);
-    expect(layout.headers.map((h) => h.label)).toEqual([
-      'Winners final',
-      'Losers final',
-      'Grand final',
-      'Extra heat, if needed',
-    ]);
-    const [winnersFinal, losersFinal, grand, extra] = layout.cards;
-    // The grand final sits to the right, level with the gap between the two finals feeding it,
-    // and its extra heat to the right of that.
+    expect(layout.cards.map((c) => c.match.id)).toEqual(['r5m0', 'l9m0', 'grand']);
+    expect(layout.headers.map((h) => h.label)).toEqual(['Winners final', 'Losers final', 'Grand final']);
+    const [winnersFinal, losersFinal, grand] = layout.cards;
+    // The grand final sits to the right, level with the gap between the two finals feeding it.
     expect(grand.x).toBeGreaterThan(winnersFinal.x + 232);
     expect(grand.y).toBeGreaterThan(winnersFinal.y);
     expect(grand.y).toBeLessThan(losersFinal.y);
-    expect(extra).toMatchObject({ y: grand.y });
-    expect(extra.x + 232).toBe(layout.width);
-    expect(layout.paths).toHaveLength(3);
+    expect(grand.x + 232).toBe(layout.width);
+    expect(layout.paths).toHaveLength(2);
   });
 
   it('leaves the finals off the winners and losers tabs', () => {
@@ -608,14 +555,14 @@ describe('migrateBracket', () => {
     expect(podium(b).third).toBe('t3');
   });
 
-  it('adds the extra heat to a double-elimination bracket saved without one', () => {
+  it('drops the extra heat from a double-elimination bracket saved with one', () => {
     const played = playAll(buildBracket(makeTeams(8), 'double'), { r2m0: 't2', grand: 't1' });
-    // Saved before the extra heat existed: the losers-bracket champion had simply won.
-    const old = structuredClone(played);
-    delete old.grandExtra;
-    const b = migrateBracket(old);
-    expect(match(b, 'grand2')).toMatchObject({ a: 't2', b: 't1', winner: null });
-    expect(podium(b).first).toBeNull();
+    // Saved while the grand final had an extra heat, waiting to be raced.
+    const old = { ...structuredClone(played), grandExtra: { id: 'grand2', section: 'grand', round: 1, index: 0, a: 't2', b: 't1' } };
+    const b = migrateBracket(old as Bracket);
+    expect('grandExtra' in b).toBe(false);
+    expect(allMatches(b).some((m) => m.id === 'grand2')).toBe(false);
+    expect(podium(b)).toMatchObject({ first: 't1', second: 't2' });
     // Already migrated, or another format: left as it is.
     expect(migrateBracket(b)).toBe(b);
     const race = buildBracket(makeTeams(8), 'race');

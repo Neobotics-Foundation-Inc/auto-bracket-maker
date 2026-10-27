@@ -93,12 +93,6 @@ export interface Bracket {
   /** Double elimination only: winners-bracket champion against losers-bracket champion. */
   grandFinal: Match | null;
   /**
-   * Double elimination only: the extra heat the rules give when the losers-bracket champion wins
-   * the grand final, so the winners-bracket champion has lost only once. It has no teams unless
-   * that happens. Missing from brackets saved before it existed, until they're migrated.
-   */
-  grandExtra?: Match | null;
-  /**
    * Each round's heats, by round key ("main:0", "losers:2", "grand:0"). Missing rounds, and brackets
    * saved before heats existed, are single heats.
    */

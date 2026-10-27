@@ -61,10 +61,10 @@ describe('results', () => {
 
   it('lists every race with its teams, winner and status', () => {
     expect(raceRows(b).map((r) => [r.race, r.teamA, r.teamB, r.winner, r.status])).toEqual([
-      ['Semifinal 1', '1 Team 1', '4 Team 4', '1 Team 1', 'Decided'],
-      ['Semifinal 2', '2 Team 2', '3 Team 3', '', 'Ready'],
-      ['Final', '1 Team 1', 'TBD', '', 'Waiting'],
-      ['Third place', '4 Team 4', 'TBD', '', 'Waiting'],
+      ['Semifinal 1', 'Team 1', 'Team 4', 'Team 1', 'Decided'],
+      ['Semifinal 2', 'Team 2', 'Team 3', '', 'Ready'],
+      ['Final', 'Team 1', 'TBD', '', 'Waiting'],
+      ['Third place', 'Team 4', 'TBD', '', 'Waiting'],
     ]);
     expect(resultsCsv(b).split('\r\n')[0]).toBe('Section,Race,Team A,Team B,Winner,Score,Status');
   });
@@ -74,7 +74,7 @@ describe('results', () => {
     let bo3 = buildBracket(teams(4), 'race', 3);
     bo3 = recordHeat(recordHeat(bo3, 'r0m0', 't4'), 'r0m0', 't1');
     expect(raceRows(bo3)[0]).toMatchObject({ score: '1–1', status: 'Ready' });
-    expect(resultsCsv(bo3).split('\r\n')[1]).toBe('Bracket,Semifinal 1,1 Team 1,4 Team 4,,1–1,Ready');
+    expect(resultsCsv(bo3).split('\r\n')[1]).toBe('Bracket,Semifinal 1,Team 1,Team 4,,1–1,Ready');
   });
 
   it('gives the placings, with third only when there are semifinals', () => {

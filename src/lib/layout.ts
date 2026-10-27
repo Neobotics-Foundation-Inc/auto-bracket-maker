@@ -1,4 +1,4 @@
-import { extraHeatNeeded, sectionRoundName, showsExtraHeat } from './bracket';
+import { sectionRoundName } from './bracket';
 import type { Bracket, Match, Section } from './types';
 
 // Kept tight so a 64-slot bracket still scales to a legible size on one 16:9 screen.
@@ -28,7 +28,7 @@ export interface Header extends Box {
   section?: boolean;
   /** A small label over a single race below the final ("Third place"). */
   sub?: boolean;
-  /** The round it heads, for its heats setting. Not on section titles or the extra heat. */
+  /** The round it heads, for its heats setting. Not on section titles. */
   round?: { section: Section; round: number };
 }
 export interface Layout {
@@ -188,22 +188,6 @@ const GRAND_PAD = 28;
 export const showsBothBrackets = (bracket: Bracket) =>
   bracket.losers.length > 0 && bracket.size <= COMBINED_MAX_SIZE;
 
-/**
- * The extra grand-final heat, one column right of the grand final with a line across, while
- * it's shown: labeled "if needed" until the grand final is decided. Nothing once it isn't.
- */
-function extraHeat(bracket: Bracket, grandX: number, grandY: number, labelY: number, cw: number) {
-  if (!showsExtraHeat(bracket)) return { cards: [], paths: [], headers: [], width: 0 };
-  const x = grandX + cw + COL_GAP;
-  const cy = grandY + CARD_H / 2;
-  return {
-    cards: [{ match: bracket.grandExtra!, x, y: grandY }],
-    paths: [`M${grandX + cw} ${cy}H${x}`],
-    headers: [{ label: extraHeatNeeded(bracket) ? 'Extra heat' : 'Extra heat, if needed', x, y: labelY, sub: true }],
-    width: COL_GAP + cw,
-  };
-}
-
 const shiftPath = (d: string, dy: number) =>
   d.replace(/M(\S+) (\S+?)(?=[HV])/, (_, x, y) => `M${x} ${Number(y) + dy}`).replace(/V([\d.]+)/g, (_, y) => `V${Number(y) + dy}`);
 
@@ -235,19 +219,17 @@ export function layoutCombined(bracket: Bracket, cw = CARD_W): Layout {
   const final = lastCard(winners.cards, 'main', bracket.rounds.length - 1);
   const losersFinal = lastCard(losers.cards, 'losers', bracket.losers.length - 1);
   const into = (from: CardBox) => elbow(from.x + cw, from.y + CARD_H / 2, grandX, grandCy);
-  const extra = extraHeat(bracket, grandX, grandY, grandLabelY, cw);
 
   return {
-    width: grandX + cw + extra.width,
+    width: grandX + cw,
     height: losersTop + SECTION_H + losers.height,
     cardW: cw,
-    cards: [...winners.cards, { match: bracket.grandFinal!, x: grandX, y: grandY }, ...extra.cards, ...losers.cards],
-    paths: [...winners.paths, ...losers.paths, into(final), into(losersFinal), ...extra.paths],
+    cards: [...winners.cards, { match: bracket.grandFinal!, x: grandX, y: grandY }, ...losers.cards],
+    paths: [...winners.paths, ...losers.paths, into(final), into(losersFinal)],
     headers: [
       { label: 'Winners bracket', x: 0, y: 0, section: true },
       ...winners.headers,
       { label: sectionRoundName(bracket, 'grand', 0), x: grandX, y: grandLabelY, sub: true, round: { section: 'grand', round: 0 } },
-      ...extra.headers,
       { label: 'Losers bracket', x: 0, y: losersTop, section: true },
       ...losers.headers,
     ],
@@ -275,24 +257,21 @@ export function layoutGrandFinal(bracket: Bracket, cw = CARD_W): Layout {
     sub: true,
     round: { section: match.section, round: match.round },
   });
-  const extra = extraHeat(bracket, grandX, grandY, grandY - EXTRA_LABEL_H, cw);
 
   return {
-    width: grandX + cw + extra.width,
+    width: grandX + cw,
     height: bottomY + CARD_H,
     cardW: cw,
     cards: [
       { match: winnersFinal, x: 0, y: topY },
       { match: losersFinal, x: 0, y: bottomY },
       { match: bracket.grandFinal!, x: grandX, y: grandY },
-      ...extra.cards,
     ],
-    paths: [...[topY, bottomY].map((y) => `M${cw} ${y + CARD_H / 2}H${cw + COL_GAP}V${grandCy}H${grandX}`), ...extra.paths],
+    paths: [...[topY, bottomY].map((y) => `M${cw} ${y + CARD_H / 2}H${cw + COL_GAP}V${grandCy}H${grandX}`)],
     headers: [
       label(winnersFinal, 0, topY),
       label(losersFinal, 0, bottomY),
       label(bracket.grandFinal!, grandX, grandY),
-      ...extra.headers,
     ],
   };
 }
